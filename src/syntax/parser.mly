@@ -30,7 +30,7 @@ let make_is e (t,p_t) p p_is =
 
 %nonassoc LOWEST
 %left COMMA
-%right CAST UNTYPED RETURN THROW MACRO
+%right RETURN MACRO
 %left CATCH ELSE WHILE IF
 %left IN IS
 %right ASSIGN ASSIGNMOD ASSIGNAND ASSIGNOR ASSIGNXOR ASSIGNPLUS ASSIGNMINUS ASSIGNSTAR ASSIGNSLASH ASSIGNSHL ASSIGNBOOLOR ASSIGNBOOLAND
@@ -44,7 +44,7 @@ let make_is e (t,p_t) p p_is =
 %left PLUS MINUS
 %left STAR SLASH
 %left PERCENT
-%right INCREMENT DECREMENT TILDE EXCLAMATION
+%right INCREMENT DECREMENT EXCLAMATION
 %left ARROW
 %right QUESTIONMARK
 %right POPEN BKOPEN BROPEN
@@ -61,6 +61,9 @@ let make_is e (t,p_t) p p_is =
 %type <Ast.expr> sharp_condition
 %type <string> sharp_error_message
 
+%on_error_reduce expr_open expr_closed expr_var expr
+%on_error_reduce path complex_type
+
 %%
 
 (* Various *)
@@ -73,7 +76,7 @@ lpoption(X):
 	| %prec LOWEST { None }
 	| x = X { Some x }
 
-%inline metadata:
+metadata:
 	| name = METADATA { (Meta.Custom name,[],mk $startpos $endpos) }
 	| name = METADATA_OPEN; el = separated_list(COMMA, expr); PCLOSE { (Meta.Custom name,el,mk $startpos $endpos) }
 
@@ -142,14 +145,14 @@ path_with_pos:
 	| GT; GT; GT; ASSIGN { OpAssignOp(OpUShr) }
 	| GT; GT; GT { OpUShr }
 
-%inline unary_prefix:
+unary_prefix:
 	| INCREMENT { Increment }
 	| DECREMENT { Decrement }
 	| TILDE { NegBits }
 	| EXCLAMATION { Not }
 	| MINUS { Neg }
 
-%inline unary_postfix:
+unary_postfix:
 	| INCREMENT { Increment }
 	| DECREMENT { Decrement }
 	| EXCLAMATION { Not }
@@ -196,7 +199,7 @@ else_expr:
 	| ELSE; e1 = expr { e1 }
 
 catch:
-	| CATCH; POPEN; name = pos(dollar_ident); ct = type_hint; PCLOSE; e1 = expr %prec LOWEST { (name,ct,e1,mk $startpos $endpos) }
+	| CATCH; POPEN; name = pos(dollar_ident); ct = type_hint; PCLOSE; e1 = expr { (name,ct,e1,mk $startpos $endpos) }
 
 guard:
 	| IF; POPEN; e1 = expr; PCLOSE { e1 }
@@ -211,7 +214,7 @@ case:
 	}
 
 func:
-	| name = dollar_ident?; tl = type_decl_parameters; POPEN; el = separated_list(COMMA,function_argument); PCLOSE; ct = type_hint?; e1 = expr %prec LOWEST {
+	| name = dollar_ident?; tl = type_decl_parameters; POPEN; el = separated_list(COMMA,function_argument); PCLOSE; ct = type_hint?; e1 = expr {
 		let f = {
 			f_params = tl;
 			f_type = ct;
@@ -265,11 +268,11 @@ keyword_ident:
 	| FALSE { EConst (Ident "false"),mk $startpos $endpos }
 	| NULL { EConst (Ident "null"),mk $startpos $endpos }
 
-%inline expr_var:
+expr_var:
 	| VAR; v = var_declaration { EVars([v]),mk $startpos $endpos }
 
 expr_closed:
-	| m = metadata; e1 = expr %prec LOWEST { EMeta(m,e1),mk $startpos $endpos }
+	| m = metadata; e1 = expr { EMeta(m,e1),mk $startpos $endpos }
 	| MACRO; e = macro_expr { e }
 	| e = block_expr { e }
 	| THROW; e1 = expr { EThrow e1,mk $startpos $endpos }
@@ -280,8 +283,8 @@ expr_closed:
 	| DO; e1 = expr; WHILE; POPEN; e2 = expr; PCLOSE { EWhile(e2,e1,DoWhile),mk $startpos $endpos }
 	| TRY; e1 = expr; catches = lplist(catch); { ETry(e1,catches),mk $startpos $endpos }
 	| SWITCH; e1 = expr; BROPEN; cases = case*; BRCLOSE { ESwitch(e1,cases,None),mk $startpos $endpos }
-	| FOR; POPEN; e1 = expr; PCLOSE; e2 = expr %prec LOWEST { EFor(e1,e2),mk $startpos $endpos }
-	| WHILE; POPEN; e1 = expr; PCLOSE; e2 = expr %prec LOWEST { EWhile(e1,e2,NormalWhile),mk $startpos $endpos }
+	| FOR; POPEN; e1 = expr; PCLOSE; e2 = expr { EFor(e1,e2),mk $startpos $endpos }
+	| WHILE; POPEN; e1 = expr; PCLOSE; e2 = expr { EWhile(e1,e2,NormalWhile),mk $startpos $endpos }
 	| UNTYPED; e1 = expr { EUntyped e1,mk $startpos $endpos }
 
 expr_open:
@@ -308,8 +311,8 @@ expr_open:
 	| s = DOLLAR_IDENT %prec LOWEST { EConst(Ident s),mk $startpos $endpos }
 	| s = pos(DOLLAR_IDENT); BROPEN; e1 = expr; BRCLOSE { EMeta(((Meta.Custom (fst s)),[],snd s),e1),mk $startpos $endpos }
 
-%inline expr:
-	| e = expr_closed | e = expr_open | e = expr_var { e }
+expr:
+	| e = expr_closed | e = expr_open %prec LOWEST | e = expr_var { e }
 
 (* Type hints *)
 
