@@ -251,7 +251,7 @@ and loop : 'a . 'a context -> 'a state -> 'a =
 		in
 		let state = {state with checkpoint = I.resume state.checkpoint} in
 		loop ctx state
-	| I.HandlingError _ ->
+	| I.HandlingError env ->
 		(*print_endline (Printf.sprintf "[ERROR ] Token: %s, Last shift: %s" (print_token (fst state.last_offer)) (print_token (fst state.last_shift)));*)
 		let insert token =
 			if has_debug ctx DInsert then begin
@@ -264,7 +264,16 @@ and loop : 'a . 'a context -> 'a state -> 'a =
 		in
 		begin match state.last_shift with
 			| ((BRCLOSE,p1,_),_) when I.acceptable state.recover_state.checkpoint SEMICOLON p1 -> insert SEMICOLON
-			| _ -> loop ctx {state with checkpoint = I.resume state.checkpoint};
+			| _ ->
+				let so = match Lazy.force (I.stack env) with
+					| M.Cons(I.Element(lrstate,_,_,_),_) -> (try Some (SyntaxErrors.message (I.number lrstate)) with Not_found -> None)
+					| _ -> None
+				in
+				begin match so with
+					| Some s -> print_endline s;
+					| None -> ()
+				end;
+				loop ctx {state with checkpoint = I.resume state.checkpoint};
 		end;
 	| I.Rejected ->
 		if has_debug ctx DReject then begin
