@@ -294,10 +294,7 @@ let s_xsymbol x =
 		| N_else_expr -> "" (* hmm *)
 		| N_field_expr -> "field_expr"
 		| N_block_expr -> "block_expr"
-		| N_unary_prefix -> "unary_prefix";
-		| N_unary_postfix -> "unary_postfix"
 		| N_metadata -> "metadata"
-		| N_expr_var -> "expr_var"
 		| N_expr -> "expr"
 		(* options *)
 		| N_option_package_ -> "package?"

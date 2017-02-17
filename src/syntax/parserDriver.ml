@@ -265,14 +265,14 @@ and loop : 'a . 'a context -> 'a state -> 'a =
 		begin match state.last_shift with
 			| ((BRCLOSE,p1,_),_) when I.acceptable state.recover_state.checkpoint SEMICOLON p1 -> insert SEMICOLON
 			| _ ->
-				let so = match Lazy.force (I.stack env) with
+				(*let so = match Lazy.force (I.stack env) with
 					| M.Cons(I.Element(lrstate,_,_,_),_) -> (try Some (SyntaxErrors.message (I.number lrstate)) with Not_found -> None)
 					| _ -> None
 				in
 				begin match so with
 					| Some s -> print_endline s;
 					| None -> ()
-				end;
+				end;*)
 				loop ctx {state with checkpoint = I.resume state.checkpoint};
 		end;
 	| I.Rejected ->

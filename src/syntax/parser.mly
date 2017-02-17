@@ -30,7 +30,7 @@ let make_is e (t,p_t) p p_is =
 
 %nonassoc LOWEST
 %left COMMA
-%right RETURN MACRO
+%right CAST UNTYPED RETURN THROW MACRO
 %left CATCH ELSE WHILE IF
 %left IN IS
 %right ASSIGN ASSIGNMOD ASSIGNAND ASSIGNOR ASSIGNXOR ASSIGNPLUS ASSIGNMINUS ASSIGNSTAR ASSIGNSLASH ASSIGNSHL ASSIGNBOOLOR ASSIGNBOOLAND
@@ -44,7 +44,7 @@ let make_is e (t,p_t) p p_is =
 %left PLUS MINUS
 %left STAR SLASH
 %left PERCENT
-%right INCREMENT DECREMENT EXCLAMATION
+%right INCREMENT DECREMENT TILDE EXCLAMATION
 %left ARROW
 %right QUESTIONMARK
 %right POPEN BKOPEN BROPEN
@@ -61,7 +61,7 @@ let make_is e (t,p_t) p p_is =
 %type <Ast.expr> sharp_condition
 %type <string> sharp_error_message
 
-%on_error_reduce expr_open expr_closed expr_var expr
+%on_error_reduce expr_open expr_closed expr
 %on_error_reduce path complex_type
 
 %%
@@ -145,14 +145,14 @@ path_with_pos:
 	| GT; GT; GT; ASSIGN { OpAssignOp(OpUShr) }
 	| GT; GT; GT { OpUShr }
 
-unary_prefix:
+%inline unary_prefix:
 	| INCREMENT { Increment }
 	| DECREMENT { Decrement }
 	| TILDE { NegBits }
 	| EXCLAMATION { Not }
 	| MINUS { Neg }
 
-unary_postfix:
+%inline unary_postfix:
 	| INCREMENT { Increment }
 	| DECREMENT { Decrement }
 	| EXCLAMATION { Not }
@@ -183,7 +183,7 @@ call_args:
 	| POPEN; el = separated_list(COMMA, expr); PCLOSE { el }
 
 assignment:
-	| ASSIGN; e1 = expr { e1 }
+	| ASSIGN; e1 = expr_inline { e1 }
 
 var_declaration:
 	| name = pos(dollar_ident); ct = lpoption(type_hint); eo = lpoption(assignment) { (name,ct,eo) }
@@ -196,10 +196,10 @@ var_declarations:
 	| v = var_declaration; vl = var_declarations_next { v :: vl }
 
 else_expr:
-	| ELSE; e1 = expr { e1 }
+	| ELSE; e1 = expr_inline { e1 }
 
 catch:
-	| CATCH; POPEN; name = pos(dollar_ident); ct = type_hint; PCLOSE; e1 = expr { (name,ct,e1,mk $startpos $endpos) }
+	| CATCH; POPEN; name = pos(dollar_ident); ct = type_hint; PCLOSE; e1 = expr_inline %prec LOWEST { (name,ct,e1,mk $startpos $endpos) }
 
 guard:
 	| IF; POPEN; e1 = expr; PCLOSE { e1 }
@@ -214,7 +214,7 @@ case:
 	}
 
 func:
-	| name = dollar_ident?; tl = type_decl_parameters; POPEN; el = separated_list(COMMA,function_argument); PCLOSE; ct = type_hint?; e1 = expr {
+	| name = dollar_ident?; tl = type_decl_parameters; POPEN; el = separated_list(COMMA,function_argument); PCLOSE; ct = type_hint?; e1 = expr_inline %prec LOWEST {
 		let f = {
 			f_params = tl;
 			f_type = ct;
@@ -268,30 +268,31 @@ keyword_ident:
 	| FALSE { EConst (Ident "false"),mk $startpos $endpos }
 	| NULL { EConst (Ident "null"),mk $startpos $endpos }
 
-expr_var:
+%inline expr_var:
 	| VAR; v = var_declaration { EVars([v]),mk $startpos $endpos }
 
 expr_closed:
-	| m = metadata; e1 = expr { EMeta(m,e1),mk $startpos $endpos }
+	| m = metadata; e1 = expr_inline %prec LOWEST { EMeta(m,e1),mk $startpos $endpos }
 	| MACRO; e = macro_expr { e }
 	| e = block_expr { e }
-	| THROW; e1 = expr { EThrow e1,mk $startpos $endpos }
-	| IF; POPEN; e1 = expr; PCLOSE; e2 = expr; eo = lpoption(else_expr) { EIf(e1,e2,eo),mk $startpos $endpos }
-	| RETURN; eo = ioption(expr) { EReturn eo,mk $startpos $endpos }
+	| THROW; e1 = expr_inline { EThrow e1,mk $startpos $endpos }
+	| IF; POPEN; e1 = expr; PCLOSE; e2 = expr_inline; eo = lpoption(else_expr) { EIf(e1,e2,eo),mk $startpos $endpos }
+	| RETURN { EReturn None,mk $startpos $endpos }
+	| RETURN; e = expr_inline { EReturn (Some e),mk $startpos $endpos }
 	| BREAK { EBreak,mk $startpos $endpos }
 	| CONTINUE { EContinue,mk $startpos $endpos }
 	| DO; e1 = expr; WHILE; POPEN; e2 = expr; PCLOSE { EWhile(e2,e1,DoWhile),mk $startpos $endpos }
-	| TRY; e1 = expr; catches = lplist(catch); { ETry(e1,catches),mk $startpos $endpos }
+	| TRY; e1 = expr_inline; catches = lplist(catch); { ETry(e1,catches),mk $startpos $endpos }
 	| SWITCH; e1 = expr; BROPEN; cases = case*; BRCLOSE { ESwitch(e1,cases,None),mk $startpos $endpos }
-	| FOR; POPEN; e1 = expr; PCLOSE; e2 = expr { EFor(e1,e2),mk $startpos $endpos }
-	| WHILE; POPEN; e1 = expr; PCLOSE; e2 = expr { EWhile(e1,e2,NormalWhile),mk $startpos $endpos }
-	| UNTYPED; e1 = expr { EUntyped e1,mk $startpos $endpos }
+	| FOR; POPEN; e1 = expr; PCLOSE; e2 = expr_inline %prec LOWEST { EFor(e1,e2),mk $startpos $endpos }
+	| WHILE; POPEN; e1 = expr; PCLOSE; e2 = expr_inline %prec LOWEST { EWhile(e1,e2,NormalWhile),mk $startpos $endpos }
+	| UNTYPED; e1 = expr_inline { EUntyped e1,mk $startpos $endpos }
 
 expr_open:
 	| BROPEN; f = object_field; fl = object_fields_next BRCLOSE { EObjectDecl (f :: fl),mk $startpos $endpos }
 	| const = const { EConst const,mk $startpos $endpos }
 	| e1 = keyword_ident { e1 }
-	| CAST; e1 = expr { ECast(e1,None),mk $startpos $endpos }
+	| CAST; e1 = expr_inline { ECast(e1,None),mk $startpos $endpos }
 	| CAST; POPEN; e1 = expr; COMMA; ct = complex_type; PCLOSE { ECast(e1,Some ct),mk $startpos $endpos }
 	| NEW; tp = type_path; el = call_args { ENew(tp,el),mk $startpos $endpos }
 	| POPEN; e1 = expr; PCLOSE { EParenthesis e1,mk $startpos $endpos }
@@ -299,20 +300,23 @@ expr_open:
 	| POPEN; e1 = expr; is = pos(IS); tp = type_path; PCLOSE { make_is e1 tp (snd is) (mk $startpos $endpos) }
 	| BKOPEN; el = array_elements; BKCLOSE { EArrayDecl el,mk $startpos $endpos }
 	| FUNCTION; f = func { EFunction(fst f,snd f),mk $startpos $endpos }
-	| op = unary_prefix; e1 = expr { EUnop(op,Prefix,e1),mk $startpos $endpos }
+	| op = unary_prefix; e1 = expr_inline { EUnop(op,Prefix,e1),mk $startpos $endpos }
 	| e1 = expr_open; name = DOT_IDENT { EField(e1,name),mk $startpos $endpos }
 	| e1 = expr_open; el = call_args { ECall(e1,el),mk $startpos $endpos }
 	| e1 = expr_open; BKOPEN; e2 = expr; BKCLOSE { EArray(e1,e2),mk $startpos $endpos }
-	| e1 = expr_open; op = op; e2 = expr { EBinop(op,e1,e2),mk $startpos $endpos }
+	| e1 = expr_open; op = op; e2 = expr_inline { EBinop(op,e1,e2),mk $startpos $endpos }
 	| e1 = expr_open; op = unary_postfix { EUnop(op,Postfix,e1),mk $startpos $endpos }
-	| e1 = expr_open; QUESTIONMARK; e2 = expr; COLON; e3 = expr { ETernary(e1,e2,e3),mk $startpos $endpos }
-	| e1 = expr_open; IN; e2 = expr { EIn(e1,e2),mk $startpos $endpos }
+	| e1 = expr_open; QUESTIONMARK; e2 = expr; COLON; e3 = expr_inline { ETernary(e1,e2,e3),mk $startpos $endpos }
+	| e1 = expr_open; IN; e2 = expr_inline { EIn(e1,e2),mk $startpos $endpos }
 	| s = INT; DOT { EConst(Float (s ^ ".")),mk $startpos $endpos }
 	| s = DOLLAR_IDENT %prec LOWEST { EConst(Ident s),mk $startpos $endpos }
 	| s = pos(DOLLAR_IDENT); BROPEN; e1 = expr; BRCLOSE { EMeta(((Meta.Custom (fst s)),[],snd s),e1),mk $startpos $endpos }
 
+%inline expr_inline:
+	| e = expr_closed | e = expr_open | e = expr_var { e }
+
 expr:
-	| e = expr_closed | e = expr_open %prec LOWEST | e = expr_var { e }
+	| e = expr_inline { e }
 
 (* Type hints *)
 
