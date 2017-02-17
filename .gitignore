@@ -1,0 +1,13 @@
+_build/
+.vscode/
+*.mldylib
+*.mllib
+META
+configure
+haxe.messages.backup
+myocamlbuild.ml
+setup.data
+setup.ml
+Makefile
+_tags
+ignore.txt

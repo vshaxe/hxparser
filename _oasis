@@ -1,0 +1,46 @@
+Name: Hxparser
+Version: 0.0.1
+Synopsis: A menhir-based implementation of a parser for the Haxe language
+Authors: Simon Krajewski <simon@haxe.org>
+License: MIT
+
+Description: A menhir-based implementation of a parser for the Haxe language
+Homepage: http://haxe.org
+
+OASISFormat: 0.4
+BuildTools: ocamlbuild
+Plugins: META (0.4), DevFiles (0.4)
+
+AlphaFeatures:
+    ocamlbuild_more_args
+
+XOCamlbuildExtraArgs:
+    -no-ocamlfind
+    -use-menhir
+    -yaccflag --table
+    -yaccflag --inspection
+    -yaccflag --unused-tokens
+    -yaccflag --explain
+
+Executable "hxparser"
+    Path: src
+    MainIs: hxparser.ml
+    CompiledObject: native
+    BuildDepends: menhirLib,sedlex,haxe-syntax,unix,str
+
+Library "haxe-context"
+    Path: src/context
+    BuildDepends: haxe-root
+    Modules: Meta
+    Install: false
+
+Library "haxe-root"
+    Path: src
+    Modules: Globals
+    Install: false
+
+Library "haxe-syntax"
+    Path: src/syntax
+    BuildDepends: sedlex,menhirLib,haxe-context,haxe-root
+    Modules: Sedlex_menhir
+    Install: false
