@@ -1,9 +1,9 @@
 all: update
 
 create:
-	menhir --list-errors --no-stdlib --infer src/syntax/parser.mly > haxe.messages
+	menhir --list-errors --infer src/syntax/parser.mly > haxe.messages
 
 update:
 	cp haxe.messages haxe.messages.backup
-	menhir --update-errors haxe.messages.backup --no-stdlib --infer src/syntax/parser.mly > haxe.messages
-	menhir --compile-errors haxe.messages --no-stdlib --infer src/syntax/parser.mly > src/syntax/syntaxErrors.ml
+	menhir --update-errors haxe.messages.backup --infer src/syntax/parser.mly > haxe.messages
+	menhir --compile-errors haxe.messages --infer src/syntax/parser.mly > src/syntax/syntaxErrors.ml

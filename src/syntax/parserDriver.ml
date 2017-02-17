@@ -254,9 +254,9 @@ and loop : 'a . 'a context -> 'a state -> 'a =
 	| I.HandlingError _ ->
 		(*print_endline (Printf.sprintf "[ERROR ] Token: %s, Last shift: %s" (print_token (fst state.last_offer)) (print_token (fst state.last_shift)));*)
 		let insert token =
-            if has_debug ctx DInsert then begin
-                print_endline (Printf.sprintf "[INSERT] %s" (s_token token));
-            end;
+			if has_debug ctx DInsert then begin
+				print_endline (Printf.sprintf "[INSERT] %s" (s_token token));
+			end;
 			let last_offer = state.last_offer in
 			let state = offer ctx state.recover_state (token,Lexing.dummy_pos,Lexing.dummy_pos) [] in
 			let state = {state with inserted_tokens = fst last_offer :: state.inserted_tokens } in

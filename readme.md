@@ -9,7 +9,7 @@
 ```
 opam install oasis
 opam install sedlex
-opam install menhirLib
+opam install menhir
 ```
 
 ## Compilation
