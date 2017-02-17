@@ -32,9 +32,11 @@ let read_file filename =
 ;;
 
 let ignores = ref (
-	if Sys.file_exists "ignore.txt" then begin
-		read_file "ignore.txt"
-	end else []
+	let ignores =
+		if Sys.file_exists "ignore.txt" then read_file "ignore.txt"
+		else []
+	in
+	(Str.regexp "\\.git") :: ignores
 )
 
 let is_ignored s =
