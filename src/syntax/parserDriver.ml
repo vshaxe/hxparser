@@ -106,11 +106,11 @@ let pos_to_json p =
 let rec to_json = function
 	| Leaf((token,p1,p2),trivia) ->
 		let trivia = List.map (fun t -> Leaf(t,[])) trivia in
-		let l = ("token",JString (s_token token)) :: ("start",pos_to_json p1) :: ("end",pos_to_json p2) ::
+		let l = ("name",JString "token") :: ("token",JString (s_token token)) :: ("start",pos_to_json p1) :: ("end",pos_to_json p2) ::
 			(match trivia with [] -> [] | _ -> ["trivia",JArray (List.map to_json trivia)]) in
 		JObject l
 	| Node(_,[]) -> JNull
-	| Node(name,[t1]) -> (match name with "" | "#list" -> to_json t1 | _ -> JObject[name,to_json t1])
+	| Node(name,[t1]) -> (match name with "" | "#list" -> to_json t1 | _ -> JObject["name",JString name;"sub",to_json t1])
 	| Node(name,tl) ->
 		begin match List.rev tl with
 			| Node("#list", tl2) :: tl -> to_json (Node(name,(List.rev tl) @ tl2))
@@ -121,7 +121,7 @@ let rec to_json = function
 				| [] -> JNull
 				| _ ->
 					let j = JArray l in
-					(match name with "" | "#list" -> j | _ -> JObject [name,j])
+					(match name with "" | "#list" -> j | _ -> JObject ["name",JString name;"sub",j])
 		end
 
 let offer ctx state token trivia =
