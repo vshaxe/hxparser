@@ -64,15 +64,18 @@ let rec preprocessor lexbuf =
 	| "#elseif" -> update lexbuf; SHARPELSEIF
 	| "#end" -> update lexbuf; SHARPEND
 	| "\n" | "\r\n" -> update lexbuf; new_line lexbuf; preprocessor lexbuf
-	| Plus (Compl ('#' | '\n' | '\r' | '/')) -> preprocessor lexbuf
+	| Plus (Compl ('#' | '\n' | '\r' | '/' | '"' | '~' | '\'')) -> preprocessor lexbuf
 	| "//", Star (Compl ('\n' | '\r')) -> preprocessor lexbuf
-	| "/" -> preprocessor lexbuf
-	| "#" -> preprocessor lexbuf
+	| '/' | '#' | '~' -> preprocessor lexbuf
+	| "\"" -> update lexbuf; ignore(string (Buffer.create 0) lexbuf); preprocessor lexbuf
+	| "\'" -> update lexbuf; ignore(string2 (Buffer.create 0) lexbuf); preprocessor lexbuf
+	| "/*" -> update lexbuf; ignore(comment (Buffer.create 0) lexbuf); preprocessor lexbuf
+	| "~/" -> update lexbuf; ignore(regexp (Buffer.create 0) lexbuf); preprocessor lexbuf
 	| _ ->
 		print_endline (Printf.sprintf "Invalid token %s at %s" (lexeme lexbuf) (Pos.Position.print lexbuf.pos));
 		assert false
 
-let rec token lexbuf =
+and token lexbuf =
 	let buf = lexbuf.stream in
 	match%sedlex buf with
 	(* whitespace *)
