@@ -299,7 +299,6 @@ let s_xsymbol x =
 		| N_block_expr -> "block_expr"
 		| N_metadata -> "metadata"
 		| N_expr -> "expr"
-		| N_path_with_pos -> ""
 		(* options *)
 		| N_option_package_ -> ""
 		| N_option_type_hint_ -> ""
@@ -317,6 +316,7 @@ let s_xsymbol x =
 		| N_loption_separated_nonempty_list_COMMA_expr__ -> ""
 		| N_loption_separated_nonempty_list_COMMA_function_argument__ -> ""
 		(* lists *)
+		| N_path_with_pos -> "path"
 		| N_array_elements -> "elements"
 		| N_array_elements_next -> "elements"
 		| N_anonymous_type_field_next -> "fields"
