@@ -96,7 +96,7 @@ let rec print_tree tabs t = match t with
 	| Node(name,[t1]) -> (match name with "" -> "" | _ -> name ^ ": ") ^ (print_tree tabs t1)
 	| Node(name,tl) ->
 		begin match List.rev tl with
-			| Node("#list", tl2) :: tl -> print_tree tabs (Node(name,(List.rev tl) @ tl2))
+			| Node(name2, tl2) :: tl when name = name2 -> print_tree tabs (Node(name,(List.rev tl) @ tl2))
 			| _ -> Printf.sprintf "%s%s" (match name with "" -> "" | _ -> name ^ ":") (String.concat "" (List.map (fun t -> match print_tree (tabs ^ "  ") t with "" -> "" | s -> "\n" ^ tabs ^ s) tl))
 		end
 
@@ -117,11 +117,11 @@ let rec to_json = function
 	| Node(name,[t1]) ->
 		begin match to_json t1 with
 		| JNull -> JNull
-		| j -> (match name with "" | "#list" -> j | _ -> JObject["name",JString name;"sub",JArray [j]])
+		| j -> (match name with "" -> j | _ -> JObject["name",JString name;"sub",JArray [j]])
 		end
 	| Node(name,tl) ->
 		begin match List.rev tl with
-			| Node("#list", tl2) :: tl -> to_json (Node(name,(List.rev tl) @ tl2))
+			| Node(name2, tl2) :: tl when name = name2 -> to_json (Node(name,(List.rev tl) @ tl2))
 			| _ ->
 				let l = List.map to_json tl in
 				let l = List.filter (fun j -> j <> JNull) l in
@@ -129,7 +129,7 @@ let rec to_json = function
 				| [] -> JNull
 				| _ ->
 					let j = JArray l in
-					(match name with "" | "#list" -> j | _ -> JObject ["name",JString name;"sub",j])
+					(match name with "" -> j | _ -> JObject ["name",JString name;"sub",j])
 		end
 
 let rec print_json f = function
