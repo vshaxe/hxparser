@@ -209,7 +209,7 @@ let rec input_needed : 'a . 'a context -> 'a state -> 'a = fun ctx state ->
 			state,token,trivia
 	in
 	let state,token,trivia = next_token state [] in
-	let state = offer ctx state token trivia in
+	let state = offer ctx state token (List.rev trivia) in
 	loop ctx state
 
 and loop : 'a . 'a context -> 'a state -> 'a =
