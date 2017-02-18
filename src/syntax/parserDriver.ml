@@ -124,6 +124,7 @@ let rec to_json = function
 			(match trivia with [] -> [] | _ -> ["trivia",JArray (List.map to_json trivia)]) in
 		JObject l
 	| Node(_,[]) -> JNull
+	| Node(name1,[Node(name2,sub)]) -> to_json (Node(name1 ^ " " ^ name2,sub))
 	| Node(name,[t1]) ->
 		begin match to_json t1 with
 		| JNull -> JNull
