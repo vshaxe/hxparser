@@ -10,7 +10,13 @@ let stdin_filename = "<stdin>"
 
 let parse filename =
 	let open Sedlex_menhir in
-	let ch = if filename = stdin_filename then stdin else open_in_bin filename in
+	let ch =
+		if filename = stdin_filename then (
+			set_binary_mode_in stdin true;
+			stdin
+		) else
+			open_in_bin filename
+		in
 	let report_error sl =
 		List.iter print_endline sl;
 		print_endline ("while parsing " ^ filename ^ "\n\n");
