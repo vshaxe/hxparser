@@ -250,8 +250,8 @@ let rec input_needed : 'a . 'a context -> 'a state -> 'a result = fun ctx state 
 		| SEMICOLON when state.lookahead_state = LANone ->
 			let clear_lookahead state = {state with lookahead_state = LANone} in
 			begin match next_token {state with lookahead_state = LAToken(token,trivia)} trivia with
-				| (state,((ELSE,p1,p2) as token),trivia) ->
-					clear_lookahead state,token,trivia
+				| (state,((ELSE,p1,p2) as token2),trivia) ->
+					clear_lookahead state,token2,(trivia @ [Leaf(token,[])])
 				| (state2,token2,trivia2) ->
 					if state2.lookahead_state = LAActive then
 						clear_lookahead state,token2,trivia2
