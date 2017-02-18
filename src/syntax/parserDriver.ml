@@ -185,14 +185,16 @@ let rec input_needed : 'a . 'a context -> 'a state -> 'a result = fun ctx state 
 		| (WHITESPACE _ | COMMENTLINE _) -> next_token state (add_trivia token trivia)
 		| COMMENT _ -> next_token state (add_trivia token trivia)
 		| SHARPERROR ->
+			let trivia = add_trivia token trivia in
 			let message_checkpoint = (Parser.Incremental.sharp_error_message ctx.com.lexbuf.pos) in
 			let state,trivia = match run ctx.com message_checkpoint with
 				| Accept(s,state') -> state,(state'.tree @ trivia)
 				(* TODO: this is probably not accurate, might need more state information from state2 *)
 				| Reject(_,state2) -> {state with inserted_tokens = state2.last_offer :: state.inserted_tokens},trivia
 			in
-			next_token state (add_trivia token trivia)
+			next_token state trivia
 		| SHARPLINE ->
+			let trivia = add_trivia token trivia in
 			let line_checkpoint = Parser.Incremental.sharp_line_number ctx.com.lexbuf.pos in
 			let trivia = match run ctx.com line_checkpoint with
 				| Accept(s,state) ->
@@ -201,8 +203,9 @@ let rec input_needed : 'a . 'a context -> 'a state -> 'a result = fun ctx state 
 					state.tree @ trivia
 				| Reject _ -> (* TODO: Error somehow *) trivia
 			in
-			next_token state (add_trivia token trivia)
+			next_token state trivia
 		| SHARPIF ->
+			let trivia = add_trivia token trivia in
 			let cond_checkpoint = (Parser.Incremental.sharp_condition ctx.com.lexbuf.pos) in
 			let cond,trivia = match run ctx.com cond_checkpoint with
 				| Accept(e,state) -> e,(state.tree @ trivia)
@@ -213,8 +216,9 @@ let rec input_needed : 'a . 'a context -> 'a state -> 'a result = fun ctx state 
 				| _ -> state
 			in
 			ctx.branches <- (cond,state2,[]) :: ctx.branches;
-			next_token state (add_trivia token trivia)
+			next_token state trivia
 		| SHARPELSEIF ->
+			let trivia = add_trivia token trivia in
 			let cond_checkpoint = (Parser.Incremental.sharp_condition ctx.com.lexbuf.pos) in
 			let cond,trivia = match run ctx.com cond_checkpoint with
 				| Accept(e,state) -> e,(state.tree @ trivia)
@@ -223,7 +227,7 @@ let rec input_needed : 'a . 'a context -> 'a state -> 'a result = fun ctx state 
 			begin match ctx.branches with
 			| (expr,state0,states) :: branches ->
 				ctx.branches <- (cond,state0,((state,expr) :: states)) :: branches;
-				next_token {state0 with in_dead_branch = true} (add_trivia token trivia)
+				next_token {state0 with in_dead_branch = true} trivia
 			| [] -> assert false
 			end
 		| SHARPELSE ->

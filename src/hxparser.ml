@@ -32,9 +32,8 @@ let parse filename =
 		let com = create_common config lexbuf in
 		let print_json () = match com.json with
 			| [] -> ()
-			| l ->
-				let ja = List.map (fun ja -> JObject ["name",JString "part";"sub",ja]) l in
-				let js = JObject ["name",JString "document";"sub",JArray ja] in
+			| file :: _ ->
+				let js = JObject ["name",JString "document";"sub",file] in
 				let buffer = Buffer.create 0 in
 				write_json (Buffer.add_string buffer) js;
 				prerr_endline (Buffer.contents buffer);
