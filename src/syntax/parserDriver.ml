@@ -43,7 +43,7 @@ type 'a state = {
 	checkpoint : 'a I.checkpoint;
 	last_offer : token_info;
 	last_shift : token_info;
-	inserted_tokens : placed_token list;
+	inserted_tokens : token_info list;
 	lookahead_state : lookahead_state;
 }
 
@@ -138,18 +138,18 @@ let offer ctx state token trivia =
 
 let rec input_needed : 'a . 'a context -> 'a state -> 'a = fun ctx state ->
 	let token_from_lexer state = match state.inserted_tokens with
-		| token :: tokens when not state.in_dead_branch ->
-			{state with inserted_tokens = tokens},token
+		| (token,trivia) :: tokens when not state.in_dead_branch ->
+			{state with inserted_tokens = tokens},token,trivia
 		| _ ->
 			let p1 = ctx.lexbuf.pos in
 			let tk = (if state.in_dead_branch then Lexer.preprocessor else Lexer.token) ctx.lexbuf in
 			let p2 = ctx.lexbuf.pos in
-			state,(tk,p1,p2)
+			state,(tk,p1,p2),[]
 	in
 	let not_expr e = EUnop(Not,Prefix,e),snd e in
 	let rec next_token state trivia =
-		let state,token = token_from_lexer state in
-		process_token state (token,trivia)
+		let state,token,trivia2 = token_from_lexer state in
+		process_token state (token,trivia2 @ trivia)
 	and process_token state ((tk,p1,p2) as token,trivia) = match tk with
 		| (WHITESPACE _ | COMMENTLINE _) -> next_token state (token :: trivia)
 		| COMMENT _ -> next_token state (token :: trivia)
@@ -161,7 +161,7 @@ let rec input_needed : 'a . 'a context -> 'a state -> 'a = fun ctx state ->
 			let cond_checkpoint = (Parser.Incremental.sharp_condition ctx.lexbuf.pos) in
 			let cond = run ctx.config ctx.lexbuf cond_checkpoint in
 			let state2 = match state.lookahead_state with
-				| LAToken(token,_) -> {state with inserted_tokens = token :: state.inserted_tokens; lookahead_state = LAActive}
+				| LAToken(token,trivia) -> {state with inserted_tokens = (token,trivia) :: state.inserted_tokens; lookahead_state = LAActive}
 				| _ -> state
 			in
 			ctx.branches <- (cond,state2,[]) :: ctx.branches;
@@ -201,7 +201,7 @@ let rec input_needed : 'a . 'a context -> 'a state -> 'a = fun ctx state ->
 					if state2.lookahead_state = LAActive then
 						clear_lookahead state,token2,trivia2
 					else begin
-						let state = {state with inserted_tokens = token2 :: state.inserted_tokens; lookahead_state = LANone} in
+						let state = {state with inserted_tokens = (token2,trivia2) :: state.inserted_tokens; lookahead_state = LANone} in
 						state,token,trivia
 					end
 			end
@@ -263,7 +263,7 @@ and loop : 'a . 'a context -> 'a state -> 'a =
 			end;
 			let last_offer = state.last_offer in
 			let state = offer ctx state.recover_state (token,Lexing.dummy_pos,Lexing.dummy_pos) [] in
-			let state = {state with inserted_tokens = fst last_offer :: state.inserted_tokens } in
+			let state = {state with inserted_tokens = last_offer :: state.inserted_tokens } in
 			loop ctx state
 		in
 		begin match state.last_shift with
