@@ -452,7 +452,7 @@ enum_field_arg:
 
 enum_field_args:
 	| { [] }
-	| POPEN; l = separated_nonempty_list(COMMA,enum_field_arg); PCLOSE { l }
+	| POPEN; l = separated_list(COMMA,enum_field_arg); PCLOSE { l }
 
 enum_field:
 	| annotation = annotations; name = pos(ident); tl = type_decl_parameters; args = enum_field_args; ct = type_hint?; SEMICOLON {

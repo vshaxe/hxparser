@@ -342,5 +342,6 @@ let s_xsymbol x =
 		| N_separated_nonempty_list_COMMA_function_argument_ -> "#list"
 		| N_separated_nonempty_list_COMMA_complex_type_ -> "#list"
 		| N_separated_nonempty_list_COMMA_enum_field_arg_ -> "#list"
+		| N_loption_separated_nonempty_list_COMMA_enum_field_arg__ -> "#list"
 		| N_list_enum_field_ -> "#list"
 		end
