@@ -63,14 +63,14 @@ let rec preprocessor lexbuf =
 	| "#else" -> update lexbuf; SHARPELSE
 	| "#elseif" -> update lexbuf; SHARPELSEIF
 	| "#end" -> update lexbuf; SHARPEND
-	| "\n" | "\r\n" -> update lexbuf; new_line lexbuf; preprocessor lexbuf
-	| Plus (Compl ('#' | '\n' | '\r' | '/' | '"' | '~' | '\'')) -> preprocessor lexbuf
-	| "//", Star (Compl ('\n' | '\r')) -> preprocessor lexbuf
-	| '/' | '#' | '~' -> preprocessor lexbuf
-	| "\"" -> update lexbuf; ignore(string (Buffer.create 0) lexbuf); preprocessor lexbuf
-	| "\'" -> update lexbuf; ignore(string2 (Buffer.create 0) lexbuf); preprocessor lexbuf
-	| "/*" -> update lexbuf; ignore(comment (Buffer.create 0) lexbuf); preprocessor lexbuf
-	| "~/" -> update lexbuf; ignore(regexp (Buffer.create 0) lexbuf); preprocessor lexbuf
+	| "\n" | "\r\n" -> update lexbuf; new_line lexbuf; WHITESPACE (lexeme lexbuf)
+	| Plus (Compl ('#' | '\n' | '\r' | '/' | '"' | '~' | '\'')) -> update lexbuf; WHITESPACE (lexeme lexbuf)
+	| "//", Star (Compl ('\n' | '\r')) -> update lexbuf; WHITESPACE (lexeme lexbuf)
+	| '/' | '#' | '~' -> update lexbuf; WHITESPACE (lexeme lexbuf)
+	| "\"" -> update lexbuf; ignore(string (Buffer.create 0) lexbuf); WHITESPACE (lexeme lexbuf)
+	| "\'" -> update lexbuf; ignore(string2 (Buffer.create 0) lexbuf); WHITESPACE (lexeme lexbuf)
+	| "/*" -> update lexbuf; ignore(comment (Buffer.create 0) lexbuf); WHITESPACE (lexeme lexbuf)
+	| "~/" -> update lexbuf; ignore(regexp (Buffer.create 0) lexbuf); WHITESPACE (lexeme lexbuf)
 	| _ ->
 		print_endline (Printf.sprintf "Invalid token %s at %s" (lexeme lexbuf) (Pos.Position.print lexbuf.pos));
 		assert false

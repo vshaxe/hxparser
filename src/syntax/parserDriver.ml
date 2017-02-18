@@ -25,9 +25,9 @@ type parser_driver_config = {
 
 type placed_token = (token * Lexing.position * Lexing.position)
 
-type token_info = placed_token * placed_token list
+type token_info = placed_token * tree list
 
-type tree =
+and tree =
 	| Node of string * tree list
 	| Leaf of token_info
 
@@ -59,7 +59,7 @@ type 'a context = {
 }
 
 type 'a result =
-	| Accept of 'a
+	| Accept of 'a * 'a state
 	| Reject of string list * 'a state
 
 let default_config () = {
@@ -119,7 +119,7 @@ let pos_to_json p =
 
 let rec to_json = function
 	| Leaf((token,p1,p2),trivia) ->
-		let trivia = List.map (fun t -> Leaf(t,[])) trivia in
+		(*let trivia = List.map (fun t -> Leaf(t,[])) trivia in*)
 		let l = ("name",JString "token") :: ("token",JString (s_token token)) :: ("start",pos_to_json p1) :: ("end",pos_to_json p2) ::
 			(match trivia with [] -> [] | _ -> ["trivia",JArray (List.map to_json trivia)]) in
 		JObject l
@@ -175,33 +175,37 @@ let rec input_needed : 'a . 'a context -> 'a state -> 'a result = fun ctx state 
 			state,(tk,p1,p2),[]
 	in
 	let not_expr e = EUnop(Not,Prefix,e),snd e in
+	let add_trivia token trivia =
+		Leaf(token,[]) :: trivia
+	in
 	let rec next_token state trivia =
 		let state,token,trivia2 = token_from_lexer state in
 		process_token state (token,trivia2 @ trivia)
 	and process_token state ((tk,p1,p2) as token,trivia) = match tk with
-		| (WHITESPACE _ | COMMENTLINE _) -> next_token state (token :: trivia)
-		| COMMENT _ -> next_token state (token :: trivia)
+		| (WHITESPACE _ | COMMENTLINE _) -> next_token state (add_trivia token trivia)
+		| COMMENT _ -> next_token state (add_trivia token trivia)
 		| SHARPERROR ->
 			let message_checkpoint = (Parser.Incremental.sharp_error_message ctx.com.lexbuf.pos) in
-			let state = match run ctx.com message_checkpoint with
-				| Accept s -> state
+			let state,trivia = match run ctx.com message_checkpoint with
+				| Accept(s,state') -> state,(state'.tree @ trivia)
 				(* TODO: this is probably not accurate, might need more state information from state2 *)
-				| Reject(_,state2) -> {state with inserted_tokens = state2.last_offer :: state.inserted_tokens}
+				| Reject(_,state2) -> {state with inserted_tokens = state2.last_offer :: state.inserted_tokens},trivia
 			in
-			next_token state trivia
+			next_token state (add_trivia token trivia)
 		| SHARPLINE ->
 			let line_checkpoint = Parser.Incremental.sharp_line_number ctx.com.lexbuf.pos in
-			begin match run ctx.com line_checkpoint with
-				| Accept s ->
+			let trivia = match run ctx.com line_checkpoint with
+				| Accept(s,state) ->
 					let i = (try int_of_string s with _ -> (* TODO: Error somehow *) assert false) in
-					set_line ctx.com.lexbuf i
-				| Reject _ -> (* TODO: Error somehow *) ()
-			end;
-			next_token state trivia
+					set_line ctx.com.lexbuf i;
+					state.tree @ trivia
+				| Reject _ -> (* TODO: Error somehow *) trivia
+			in
+			next_token state (add_trivia token trivia)
 		| SHARPIF ->
 			let cond_checkpoint = (Parser.Incremental.sharp_condition ctx.com.lexbuf.pos) in
-			let cond = match run ctx.com cond_checkpoint with
-				| Accept e -> e
+			let cond,trivia = match run ctx.com cond_checkpoint with
+				| Accept(e,state) -> e,(state.tree @ trivia)
 				| Reject _ -> assert false
 			in
 			let state2 = match state.lookahead_state with
@@ -209,24 +213,24 @@ let rec input_needed : 'a . 'a context -> 'a state -> 'a result = fun ctx state 
 				| _ -> state
 			in
 			ctx.branches <- (cond,state2,[]) :: ctx.branches;
-			next_token state trivia
+			next_token state (add_trivia token trivia)
 		| SHARPELSEIF ->
 			let cond_checkpoint = (Parser.Incremental.sharp_condition ctx.com.lexbuf.pos) in
-			let cond = match run ctx.com cond_checkpoint with
-				| Accept e -> e
+			let cond,trivia = match run ctx.com cond_checkpoint with
+				| Accept(e,state) -> e,(state.tree @ trivia)
 				| Reject _ -> assert false
 			in
 			begin match ctx.branches with
 			| (expr,state0,states) :: branches ->
 				ctx.branches <- (cond,state0,((state,expr) :: states)) :: branches;
-				next_token {state0 with in_dead_branch = true} trivia
+				next_token {state0 with in_dead_branch = true} (add_trivia token trivia)
 			| [] -> assert false
 			end
 		| SHARPELSE ->
 			begin match ctx.branches with
 			| (expr,state0,states) :: branches ->
 				ctx.branches <- (not_expr expr,state0,((state,expr) :: states)) :: branches;
-				next_token {state0 with in_dead_branch = true} trivia
+				next_token {state0 with in_dead_branch = true} (add_trivia token trivia)
 			| [] -> assert false
 			end
 		| SHARPEND ->
@@ -234,8 +238,8 @@ let rec input_needed : 'a . 'a context -> 'a state -> 'a result = fun ctx state 
 			| (expr,_,states) :: branches ->
 				ctx.branches <- branches;
 				begin match List.filter (fun (state,_) -> not state.in_dead_branch) ((state,expr) :: states) with
-				| [state,_] -> next_token state trivia
-				| _ -> next_token state trivia
+				| [state,_] -> next_token state (add_trivia token trivia)
+				| _ -> next_token state (add_trivia token trivia)
 				end
 			| [] -> assert false
 			end
@@ -272,7 +276,7 @@ and loop : 'a . 'a context -> 'a state -> 'a result =
 			else
 				print_endline "[ACCEPT]"
 		end;
-		Accept v
+		Accept(v,state)
 	| I.InputNeeded _ ->
 		input_needed ctx state
 	| I.Shifting _ ->
