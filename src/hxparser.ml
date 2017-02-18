@@ -22,18 +22,21 @@ let parse filename =
 	begin try
 		let _ = Lexer.skip_header lexbuf in
 		let com = create_common config lexbuf in
+		let print_json () = match com.json with
+			| [] -> ()
+			| l ->
+				let ja = List.map (fun ja -> JObject ["name",JString "part";"sub",ja]) l in
+				let js = JObject ["name",JString "document";"sub",JArray ja] in
+				let buffer = Buffer.create 0 in
+				write_json (Buffer.add_string buffer) js;
+				prerr_endline (Buffer.contents buffer);
+		in
 		begin match run com (Parser.Incremental.file lexbuf.pos) with
+			| _ when config.output_json ->
+				print_json ();
+				exit 0
 			| Reject(sl,_) -> report_error sl
-			| Accept _ ->
-				begin match com.json with
-				| [] -> ()
-				| l ->
-					let ja = List.map (fun ja -> JObject ["name",JString "part";"sub",ja]) l in
-					let js = JObject ["name",JString "document";"sub",JArray ja] in
-					let buffer = Buffer.create 0 in
-					write_json (Buffer.add_string buffer) js;
-					prerr_endline (Buffer.contents buffer);
-				end
+			| Accept _ -> ()
 		end;
 	with exc ->
 		report_error [Printexc.to_string exc];

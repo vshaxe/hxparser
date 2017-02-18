@@ -333,6 +333,10 @@ and loop : 'a . 'a context -> 'a state -> 'a result =
 			messages := (Printf.sprintf "[REJECT] %s" (print_token (fst state.last_offer))) :: !messages;
 		end else
 			messages := "[REJECT]" :: !messages;
+		if ctx.com.config.output_json then begin
+			let ja = JArray (List.filter (fun j -> j <> JNull) (List.map to_json state.tree)) in
+			ctx.com.json <- ja :: ctx.com.json;
+		end;
 		Reject(!messages,state)
 
 and start : 'a . 'a context -> 'a I.checkpoint -> 'a result = fun ctx checkpoint ->
