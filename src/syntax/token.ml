@@ -294,7 +294,7 @@ let s_xsymbol x =
 		| N_class_or_interface -> "class_or_interface"
 		| N_literal -> "literal"
 		| N_object_field_name -> "object_field_name"
-		| N_else_expr -> "" (* hmm *)
+		| N_else_expr -> "else_expr"
 		| N_field_expr -> "field_expr"
 		| N_block_expr -> "block_expr"
 		| N_metadata -> "metadata"
