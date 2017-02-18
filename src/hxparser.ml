@@ -2,22 +2,33 @@ open ParserDriver
 
 let config = default_config()
 let quit_early = ref true
+let num_files = ref 0
+let num_errors = ref 0
 
 let parse filename =
 	let open Sedlex_menhir in
 	let ch = open_in_bin filename in
-	try
-		let lexbuf = create_lexbuf ~file:filename (Sedlexing.Utf8.from_channel ch) in
+	let report_error sl =
+		List.iter print_endline sl;
+		print_endline ("while parsing " ^ filename ^ "\n\n");
+		incr num_errors;
+		if !quit_early then begin
+			close_in ch;
+			failwith "Failed"
+		end;
+	in
+	let lexbuf = create_lexbuf ~file:filename (Sedlexing.Utf8.from_channel ch) in
+	begin try
 		let _ = Lexer.skip_header lexbuf in
-		let _ = run config lexbuf (Parser.Incremental.file lexbuf.pos) in
-		close_in ch
+		begin match run config lexbuf (Parser.Incremental.file lexbuf.pos) with
+			| Reject(sl,_) -> report_error sl
+			| Accept _ -> ()
+		end;
 	with exc ->
-		close_in ch;
-		raise exc
+		report_error [Printexc.to_string exc];
+	end;
+	close_in ch
 ;;
-
-let num_files = ref 0
-let num_errors = ref 0
 
 let read_file filename =
 	let lines = ref [] in
@@ -60,15 +71,8 @@ let explore_class_paths path =
 						let l = String.length file in
 						if l > 3 && String.sub file (l - 3) 3 = ".hx" then begin
 							let filename = dir ^ file in
-							try
-								incr num_files;
-								parse filename
-							with exc ->
-								incr num_errors;
-								print_endline (Printexc.to_string exc);
-								print_endline ("while parsing " ^ filename ^ "\n\n");
-								if !quit_early then
-									raise exc
+							incr num_files;
+							parse filename
 						end
 			) entries;
 		with Sys_error _ ->

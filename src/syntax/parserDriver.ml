@@ -53,6 +53,10 @@ type 'a context = {
 	mutable branches : (expr * 'a state * ('a state * expr) list) list;
 }
 
+type 'a result =
+	| Accept of 'a
+	| Reject of string list * 'a state
+
 let default_config () = {
 	debug_flags = [];
 	build_parse_tree = false;
@@ -149,7 +153,7 @@ let offer ctx state token trivia =
 	let state = {state with last_offer = (token,trivia); checkpoint = checkpoint; recover_state = state} in
 	state
 
-let rec input_needed : 'a . 'a context -> 'a state -> 'a = fun ctx state ->
+let rec input_needed : 'a . 'a context -> 'a state -> 'a result = fun ctx state ->
 	let token_from_lexer state = match state.inserted_tokens with
 		| (token,trivia) :: tokens when not state.in_dead_branch ->
 			{state with inserted_tokens = tokens},token,trivia
@@ -172,7 +176,10 @@ let rec input_needed : 'a . 'a context -> 'a state -> 'a = fun ctx state ->
 			next_token state trivia
 		| SHARPIF ->
 			let cond_checkpoint = (Parser.Incremental.sharp_condition ctx.lexbuf.pos) in
-			let cond = run ctx.config ctx.lexbuf cond_checkpoint in
+			let cond = match run ctx.config ctx.lexbuf cond_checkpoint with
+				| Accept e -> e
+				| Reject _ -> assert false
+			in
 			let state2 = match state.lookahead_state with
 				| LAToken(token,trivia) -> {state with inserted_tokens = (token,trivia) :: state.inserted_tokens; lookahead_state = LAActive}
 				| _ -> state
@@ -181,7 +188,10 @@ let rec input_needed : 'a . 'a context -> 'a state -> 'a = fun ctx state ->
 			next_token state trivia
 		| SHARPELSEIF ->
 			let cond_checkpoint = (Parser.Incremental.sharp_condition ctx.lexbuf.pos) in
-			let cond = run ctx.config ctx.lexbuf cond_checkpoint in
+			let cond = match run ctx.config ctx.lexbuf cond_checkpoint with
+				| Accept e -> e
+				| Reject _ -> assert false
+			in
 			begin match ctx.branches with
 			| (expr,state0,states) :: branches ->
 				ctx.branches <- (cond,state0,((state,expr) :: states)) :: branches;
@@ -225,7 +235,7 @@ let rec input_needed : 'a . 'a context -> 'a state -> 'a = fun ctx state ->
 	let state = offer ctx state token (List.rev trivia) in
 	loop ctx state
 
-and loop : 'a . 'a context -> 'a state -> 'a =
+and loop : 'a . 'a context -> 'a state -> 'a result =
 	fun ctx state -> match state.checkpoint with
 	| I.Accepted v ->
 		if ctx.config.output_json then begin
@@ -241,7 +251,7 @@ and loop : 'a . 'a context -> 'a state -> 'a =
 			else
 				print_endline "[ACCEPT]"
 		end;
-		v
+		Accept v
 	| I.InputNeeded _ ->
 		input_needed ctx state
 	| I.Shifting _ ->
@@ -295,20 +305,23 @@ and loop : 'a . 'a context -> 'a state -> 'a =
 				loop ctx {state with checkpoint = I.resume state.checkpoint};
 		end;
 	| I.Rejected ->
+		let messages = ref [] in
 		if has_debug ctx DReject then begin
-			if ctx.config.build_parse_tree then
-				print_endline (Printf.sprintf "[REJECT] %s" (print_tree_list state.tree));
-			print_endline (Printf.sprintf "[REJECT] %s" (print_token (fst state.last_offer)));
+			if ctx.config.build_parse_tree then begin
+				messages := (Printf.sprintf "[REJECT] %s" (print_tree_list state.tree)) :: !messages;
 		end;
-		assert false
+			messages := (Printf.sprintf "[REJECT] %s" (print_token (fst state.last_offer))) :: !messages;
+		end else
+			messages := "[REJECT]" :: !messages;
+		Reject(!messages,state)
 
-and start : 'a . 'a context -> 'a I.checkpoint -> 'a = fun ctx checkpoint ->
+and start : 'a . 'a context -> 'a I.checkpoint -> 'a result = fun ctx checkpoint ->
 	if has_debug ctx DStart then begin
 		print_endline "[START ]"
 	end;
 	let state = create_state checkpoint in
 	loop ctx state
 
-and run : 'a . parser_driver_config -> lexbuf -> 'a I.checkpoint -> 'a = fun config lexbuf checkpoint ->
+and run : 'a . parser_driver_config -> lexbuf -> 'a I.checkpoint -> 'a result = fun config lexbuf checkpoint ->
 	let ctx = create_context config lexbuf in
 	start ctx checkpoint
