@@ -128,6 +128,19 @@ let rec to_json = function
 					(match name with "" | "#list" -> j | _ -> JObject ["name",JString name;"sub",j])
 		end
 
+let rec print_json f = function
+	| JObject fl ->
+		begin try
+			let _ = List.assoc "name" fl in
+			print_json f (List.assoc "sub" fl)
+		with Not_found ->
+			(try print_json f (List.assoc "trivia" fl) with Not_found -> ());
+			print_json f (List.assoc "token" fl)
+		end
+	| JArray ja -> List.iter (print_json f) ja
+	| JString s -> f s
+	| _ -> assert false
+
 let offer ctx state token trivia =
 	if has_debug ctx DOffer then begin
 		print_endline (Printf.sprintf "[OFFER ] %s" (print_token token));
@@ -217,7 +230,9 @@ and loop : 'a . 'a context -> 'a state -> 'a =
 	| I.Accepted v ->
 		if ctx.config.output_json then begin
 			let buffer = Buffer.create 0 in
-			Json.write_json (Buffer.add_string buffer) (JArray (List.map to_json state.tree));
+			let ja = JArray (List.map to_json state.tree) in
+			(*print_json print_string ja;*)
+			Json.write_json (Buffer.add_string buffer) ja;
 			print_endline (Buffer.contents buffer);
 		end;
 		if has_debug ctx DAccept then begin
