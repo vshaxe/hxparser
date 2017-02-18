@@ -6,9 +6,11 @@ let quit_early = ref true
 let num_files = ref 0
 let num_errors = ref 0
 
+let stdin_filename = "<stdin>"
+
 let parse filename =
 	let open Sedlex_menhir in
-	let ch = open_in_bin filename in
+	let ch = if filename = stdin_filename then stdin else open_in_bin filename in
 	let report_error sl =
 		List.iter print_endline sl;
 		print_endline ("while parsing " ^ filename ^ "\n\n");
@@ -145,7 +147,9 @@ if !paths = [] then
 else begin
 	let now = Sys.time () in
 	List.iter (fun s ->
-		if not (Sys.file_exists s) then
+		if s = stdin_filename then
+			parse s
+		else if not (Sys.file_exists s) then
 			print_endline ("No such file or directory: " ^ s)
 		else begin
 			if Sys.is_directory s then begin
