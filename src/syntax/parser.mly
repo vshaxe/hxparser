@@ -173,7 +173,7 @@ const:
 	| s = literal { s }
 
 object_field_name:
-	| name = ident { name }
+	| name = dollar_ident { name }
 	| name = STRING { name }
 
 object_field:
@@ -329,7 +329,7 @@ anonymous_type_field_next:
 
 anonymous_type_field:
 	| { [] }
-	| opt = QUESTIONMARK?; name = pos(ident); COLON; ct = complex_type; cffl = anonymous_type_field_next {
+	| opt = QUESTIONMARK?; name = pos(dollar_ident); COLON; ct = complex_type; cffl = anonymous_type_field_next {
 		let cff = {
 			cff_name = name;
 			cff_meta = (match opt with None -> [] | Some _ -> [Meta.Optional,[],Pos.Range.null]);
@@ -448,14 +448,14 @@ class_field:
 	}
 
 enum_field_arg:
-	| opt = QUESTIONMARK?; name = ident; ct = type_hint; { (name,(match opt with None -> false | Some _ -> true),ct) }
+	| opt = QUESTIONMARK?; name = dollar_ident; ct = type_hint; { (name,(match opt with None -> false | Some _ -> true),ct) }
 
 enum_field_args:
 	| { [] }
 	| POPEN; l = separated_list(COMMA,enum_field_arg); PCLOSE { l }
 
 enum_field:
-	| annotation = annotations; name = pos(ident); tl = type_decl_parameters; args = enum_field_args; ct = type_hint?; SEMICOLON {
+	| annotation = annotations; name = pos(dollar_ident); tl = type_decl_parameters; args = enum_field_args; ct = type_hint?; SEMICOLON {
 		let ef = {
 			ec_name = name;
 			ec_doc = fst annotation;
