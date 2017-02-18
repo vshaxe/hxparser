@@ -1,4 +1,5 @@
 open ParserDriver
+open Json
 
 let config = default_config()
 let quit_early = ref true
@@ -20,9 +21,19 @@ let parse filename =
 	let lexbuf = create_lexbuf ~file:filename (Sedlexing.Utf8.from_channel ch) in
 	begin try
 		let _ = Lexer.skip_header lexbuf in
-		begin match run config lexbuf (Parser.Incremental.file lexbuf.pos) with
+		let com = create_common config lexbuf in
+		begin match run com (Parser.Incremental.file lexbuf.pos) with
 			| Reject(sl,_) -> report_error sl
-			| Accept _ -> ()
+			| Accept _ ->
+				begin match com.json with
+				| [] -> ()
+				| l ->
+					let ja = List.map (fun ja -> JObject ["name",JString "part";"sub",ja]) l in
+					let js = JObject ["name",JString "document";"sub",JArray ja] in
+					let buffer = Buffer.create 0 in
+					write_json (Buffer.add_string buffer) js;
+					prerr_endline (Buffer.contents buffer);
+				end
 		end;
 	with exc ->
 		report_error [Printexc.to_string exc];

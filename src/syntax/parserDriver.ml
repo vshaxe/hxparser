@@ -47,9 +47,14 @@ type 'a state = {
 	lookahead_state : lookahead_state;
 }
 
-type 'a context = {
+type common = {
 	lexbuf : lexbuf;
 	config : parser_driver_config;
+	mutable json : Json.t list;
+}
+
+type 'a context = {
+	com : common;
 	mutable branches : (expr * 'a state * ('a state * expr) list) list;
 }
 
@@ -63,10 +68,15 @@ let default_config () = {
 	output_json = false;
 }
 
-let create_context config lexbuf = {
+let create_context com = {
+	com = com;
+	branches = [];
+}
+
+let create_common config lexbuf = {
 	lexbuf = lexbuf;
 	config = config;
-	branches = [];
+	json = [];
 }
 
 let create_state checkpoint =
@@ -83,7 +93,7 @@ let create_state checkpoint =
 	} in
 	state
 
-let has_debug ctx flag = List.mem flag ctx.config.debug_flags
+let has_debug ctx flag = List.mem flag ctx.com.config.debug_flags
 
 let print_position = Pos.Position.print
 
@@ -158,9 +168,9 @@ let rec input_needed : 'a . 'a context -> 'a state -> 'a result = fun ctx state 
 		| (token,trivia) :: tokens when not state.in_dead_branch ->
 			{state with inserted_tokens = tokens},token,trivia
 		| _ ->
-			let p1 = ctx.lexbuf.pos in
-			let tk = (if state.in_dead_branch then Lexer.preprocessor else Lexer.token) ctx.lexbuf in
-			let p2 = ctx.lexbuf.pos in
+			let p1 = ctx.com.lexbuf.pos in
+			let tk = (if state.in_dead_branch then Lexer.preprocessor else Lexer.token) ctx.com.lexbuf in
+			let p2 = ctx.com.lexbuf.pos in
 			state,(tk,p1,p2),[]
 	in
 	let not_expr e = EUnop(Not,Prefix,e),snd e in
@@ -171,25 +181,25 @@ let rec input_needed : 'a . 'a context -> 'a state -> 'a result = fun ctx state 
 		| (WHITESPACE _ | COMMENTLINE _) -> next_token state (token :: trivia)
 		| COMMENT _ -> next_token state (token :: trivia)
 		| SHARPERROR ->
-			let message_checkpoint = (Parser.Incremental.sharp_error_message ctx.lexbuf.pos) in
-			let state = match run ctx.config ctx.lexbuf message_checkpoint with
+			let message_checkpoint = (Parser.Incremental.sharp_error_message ctx.com.lexbuf.pos) in
+			let state = match run ctx.com message_checkpoint with
 				| Accept s -> state
 				(* TODO: this is probably not accurate, might need more state information from state2 *)
 				| Reject(_,state2) -> {state with inserted_tokens = state2.last_offer :: state.inserted_tokens}
 			in
 			next_token state trivia
 		| SHARPLINE ->
-			let line_checkpoint = Parser.Incremental.sharp_line_number ctx.lexbuf.pos in
-			begin match run ctx.config ctx.lexbuf line_checkpoint with
+			let line_checkpoint = Parser.Incremental.sharp_line_number ctx.com.lexbuf.pos in
+			begin match run ctx.com line_checkpoint with
 				| Accept s ->
 					let i = (try int_of_string s with _ -> (* TODO: Error somehow *) assert false) in
-					set_line ctx.lexbuf i
+					set_line ctx.com.lexbuf i
 				| Reject _ -> (* TODO: Error somehow *) ()
 			end;
 			next_token state trivia
 		| SHARPIF ->
-			let cond_checkpoint = (Parser.Incremental.sharp_condition ctx.lexbuf.pos) in
-			let cond = match run ctx.config ctx.lexbuf cond_checkpoint with
+			let cond_checkpoint = (Parser.Incremental.sharp_condition ctx.com.lexbuf.pos) in
+			let cond = match run ctx.com cond_checkpoint with
 				| Accept e -> e
 				| Reject _ -> assert false
 			in
@@ -200,8 +210,8 @@ let rec input_needed : 'a . 'a context -> 'a state -> 'a result = fun ctx state 
 			ctx.branches <- (cond,state2,[]) :: ctx.branches;
 			next_token state trivia
 		| SHARPELSEIF ->
-			let cond_checkpoint = (Parser.Incremental.sharp_condition ctx.lexbuf.pos) in
-			let cond = match run ctx.config ctx.lexbuf cond_checkpoint with
+			let cond_checkpoint = (Parser.Incremental.sharp_condition ctx.com.lexbuf.pos) in
+			let cond = match run ctx.com cond_checkpoint with
 				| Accept e -> e
 				| Reject _ -> assert false
 			in
@@ -251,15 +261,12 @@ let rec input_needed : 'a . 'a context -> 'a state -> 'a result = fun ctx state 
 and loop : 'a . 'a context -> 'a state -> 'a result =
 	fun ctx state -> match state.checkpoint with
 	| I.Accepted v ->
-		if ctx.config.output_json then begin
-			let buffer = Buffer.create 0 in
+		if ctx.com.config.output_json then begin
 			let ja = JArray (List.map to_json state.tree) in
-			(*print_json print_string ja;*)
-			Json.write_json (Buffer.add_string buffer) ja;
-			print_endline (Buffer.contents buffer);
+			ctx.com.json <- ja :: ctx.com.json;
 		end;
 		if has_debug ctx DAccept then begin
-			if ctx.config.build_parse_tree then
+			if ctx.com.config.build_parse_tree then
 				print_endline (Printf.sprintf "[ACCEPT] %s" (print_tree_list state.tree))
 			else
 				print_endline "[ACCEPT]"
@@ -274,7 +281,7 @@ and loop : 'a . 'a context -> 'a state -> 'a result =
 		end;
 		let state = {state with checkpoint = I.resume state.checkpoint; last_shift = token} in
 		let state =
-			if ctx.config.build_parse_tree then {state with tree = Leaf token :: state.tree}
+			if ctx.com.config.build_parse_tree then {state with tree = Leaf token :: state.tree}
 			else state
 		in
 		loop ctx state
@@ -283,7 +290,7 @@ and loop : 'a . 'a context -> 'a state -> 'a result =
 			| [] -> ()
 			| rhs -> print_endline (Printf.sprintf "[REDUCE] %s <- %s" (s_xsymbol (I.lhs production)) (String.concat " " (List.map s_xsymbol rhs)));
 		end;
-		let state = if ctx.config.build_parse_tree then begin
+		let state = if ctx.com.config.build_parse_tree then begin
 			let l = List.length (I.rhs production) in
 			let _,nodes1,nodes2 = List.fold_left (fun (i,l1,l2) x -> if i < l then (i + 1,x :: l1,l2) else (i + 1,l1,x :: l2)) (0,[],[]) state.tree in
 			let nodes2 = List.rev nodes2 in
@@ -320,7 +327,7 @@ and loop : 'a . 'a context -> 'a state -> 'a result =
 	| I.Rejected ->
 		let messages = ref [] in
 		if has_debug ctx DReject then begin
-			if ctx.config.build_parse_tree then begin
+			if ctx.com.config.build_parse_tree then begin
 				messages := (Printf.sprintf "[REJECT] %s" (print_tree_list state.tree)) :: !messages;
 		end;
 			messages := (Printf.sprintf "[REJECT] %s" (print_token (fst state.last_offer))) :: !messages;
@@ -335,6 +342,6 @@ and start : 'a . 'a context -> 'a I.checkpoint -> 'a result = fun ctx checkpoint
 	let state = create_state checkpoint in
 	loop ctx state
 
-and run : 'a . parser_driver_config -> lexbuf -> 'a I.checkpoint -> 'a result = fun config lexbuf checkpoint ->
-	let ctx = create_context config lexbuf in
+and run : 'a . common -> 'a I.checkpoint -> 'a result = fun com checkpoint ->
+	let ctx = create_context com in
 	start ctx checkpoint
