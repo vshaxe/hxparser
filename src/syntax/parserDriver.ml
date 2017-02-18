@@ -110,7 +110,11 @@ let rec to_json = function
 			(match trivia with [] -> [] | _ -> ["trivia",JArray (List.map to_json trivia)]) in
 		JObject l
 	| Node(_,[]) -> JNull
-	| Node(name,[t1]) -> (match name with "" | "#list" -> to_json t1 | _ -> JObject["name",JString name;"sub",to_json t1])
+	| Node(name,[t1]) ->
+		begin match to_json t1 with
+		| JNull -> JNull
+		| j -> (match name with "" | "#list" -> j | _ -> JObject["name",JString name;"sub",JArray [j]])
+		end
 	| Node(name,tl) ->
 		begin match List.rev tl with
 			| Node("#list", tl2) :: tl -> to_json (Node(name,(List.rev tl) @ tl2))
