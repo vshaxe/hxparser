@@ -172,7 +172,11 @@ let rec input_needed : 'a . 'a context -> 'a state -> 'a result = fun ctx state 
 		| COMMENT _ -> next_token state (token :: trivia)
 		| SHARPERROR ->
 			let message_checkpoint = (Parser.Incremental.sharp_error_message ctx.lexbuf.pos) in
-			let _ = run ctx.config ctx.lexbuf message_checkpoint in
+			let state = match run ctx.config ctx.lexbuf message_checkpoint with
+				| Accept s -> state
+				(* TODO: this is probably not accurate, might need more state information from state2 *)
+				| Reject(_,state2) -> {state with inserted_tokens = state2.last_offer :: state.inserted_tokens}
+			in
 			next_token state trivia
 		| SHARPIF ->
 			let cond_checkpoint = (Parser.Incremental.sharp_condition ctx.lexbuf.pos) in
