@@ -20,12 +20,21 @@ let create_lexbuf ?(file="") stream =
   in { pos ; stream }
 
 (** Register a new line in the lexer's position. *)
-let new_line ?(n=0) lexbuf =
+let new_line lexbuf =
   let open Lexing in
   let lcp = lexbuf.pos in
   lexbuf.pos <-
     {lcp with
        pos_lnum = lcp.pos_lnum + 1;
+       pos_bol = lcp.pos_cnum;
+    }
+
+let set_line lexbuf n =
+  let open Lexing in
+  let lcp = lexbuf.pos in
+  lexbuf.pos <-
+    {lcp with
+       pos_lnum = n;
        pos_bol = lcp.pos_cnum;
     }
 

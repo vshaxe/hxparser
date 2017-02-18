@@ -24,7 +24,7 @@ let make_is e (t,p_t) p p_is =
 %token <string * string> REGEX
 (* Comment these out if you generate messages, they are unused. *)
 %token <string> COMMENTLINE WHITESPACE
-%token SHARPIF SHARPELSE SHARPELSEIF SHARPEND SHARPERROR
+%token SHARPIF SHARPELSE SHARPELSEIF SHARPEND SHARPERROR SHARPLINE
 
 (* Precedence *)
 
@@ -56,10 +56,12 @@ let make_is e (t,p_t) p p_is =
 %start expr_only
 %start sharp_condition
 %start sharp_error_message
+%start sharp_line_number
 %type <string list option * Ast.type_decl list> file
 %type <Ast.expr> expr_only
 %type <Ast.expr> sharp_condition
 %type <string> sharp_error_message
+%type <string> sharp_line_number
 
 %on_error_reduce expr_open expr_closed expr
 %on_error_reduce path complex_type
@@ -601,6 +603,9 @@ sharp_condition:
 
 sharp_error_message:
 	| s = STRING { s }
+
+sharp_line_number:
+	| i = INT { i }
 
 expr_only:
 	| expr = expr; EOF { expr }

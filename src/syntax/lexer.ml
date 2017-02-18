@@ -205,6 +205,7 @@ and token lexbuf =
 	| "#elseif" -> update lexbuf; SHARPELSEIF
 	| "#end" -> update lexbuf; SHARPEND
 	| "#error" -> update lexbuf; SHARPERROR
+	| "#line" -> update lexbuf; SHARPLINE
 	| _ ->
 		print_endline (Printf.sprintf "Invalid token %s at %s" (lexeme lexbuf) (Pos.Position.print lexbuf.pos));
 		assert false

@@ -178,6 +178,15 @@ let rec input_needed : 'a . 'a context -> 'a state -> 'a result = fun ctx state 
 				| Reject(_,state2) -> {state with inserted_tokens = state2.last_offer :: state.inserted_tokens}
 			in
 			next_token state trivia
+		| SHARPLINE ->
+			let line_checkpoint = Parser.Incremental.sharp_line_number ctx.lexbuf.pos in
+			begin match run ctx.config ctx.lexbuf line_checkpoint with
+				| Accept s ->
+					let i = (try int_of_string s with _ -> (* TODO: Error somehow *) assert false) in
+					set_line ctx.lexbuf i
+				| Reject _ -> (* TODO: Error somehow *) ()
+			end;
+			next_token state trivia
 		| SHARPIF ->
 			let cond_checkpoint = (Parser.Incremental.sharp_condition ctx.lexbuf.pos) in
 			let cond = match run ctx.config ctx.lexbuf cond_checkpoint with
