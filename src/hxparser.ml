@@ -20,6 +20,7 @@ module TreeToJson = struct
 			let l = ("name",JString "token") :: ("token",JString (Token.s_token token)) :: ("start",pos_to_json p1) :: ("end",pos_to_json p2) ::
 				(match trivia with [] -> [] | _ -> ["trivia",JArray (List.map to_json trivia)]) in
 			JObject l
+		| Flag name -> JObject ["name",JString "flag";"flag",JString name]
 		| Node(_,[]) -> JNull
 		| Node(name1,[Node(name2,sub)]) -> to_json (Node((if name1 = "" then name2 else name1 ^ " " ^ name2),sub))
 		| Node(name,[t1]) ->

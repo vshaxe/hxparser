@@ -28,6 +28,7 @@ type token_info = placed_token * tree list
 and tree =
 	| Node of string * tree list
 	| Leaf of token_info
+	| Flag of string
 
 type 'a state = {
 	tree : tree list;
@@ -118,19 +119,19 @@ module TokenProvider = struct
 			| [] -> assert false
 			end
 		| _ ->
-			let token = match tk with
+			let leading = List.rev tp.leading in
+			tp.leading <- [];
+			let token,leading = match tk with
 				| SEMICOLON ->
 					begin match peek_token tp in_dead_branch with
-						| ((ELSE,_,_) as token),leading ->
+						| ((ELSE,_,_) as token),leading2 ->
+							let leading = (Leaf ((tk,p1,p2),((Flag "skipped" :: leading)))) :: leading2 in
 							consume_token tp;
-							tp.leading <- leading @ tp.leading;
-							token
-						| _ -> (tk,p1,p2)
+							token,leading
+						| _ -> (tk,p1,p2),leading
 					end
-				| _ -> (tk,p1,p2)
+				| _ -> (tk,p1,p2),leading
 			in
-			let leading = tp.leading in
-			tp.leading <- [];
 			token,leading
 
 	and peek_token tp in_dead_branch =
@@ -210,6 +211,7 @@ let rec print_tree tabs t = match t with
 			| Node(name2, tl2) :: tl when name = name2 -> print_tree tabs (Node(name,(List.rev tl) @ tl2))
 			| _ -> Printf.sprintf "%s%s" (match name with "" -> "" | _ -> name ^ ":") (String.concat "" (List.map (fun t -> match print_tree (tabs ^ "  ") t with "" -> "" | s -> "\n" ^ tabs ^ s) tl))
 		end
+	| Flag name -> name
 
 let print_tree_list tree =
 	String.concat "\n" (List.map (fun t -> print_tree "" t) tree)
@@ -224,7 +226,7 @@ let offer ctx state token trivia =
 
 let rec input_needed : 'a . 'a context -> 'a state -> 'a result = fun ctx state ->
 	let token,trivia = next_token ctx.com.token_provider false in
-	let state = offer ctx state token (List.rev trivia) in
+	let state = offer ctx state token trivia in
 	loop ctx state
 
 and loop : 'a . 'a context -> 'a state -> 'a result =
@@ -267,17 +269,17 @@ and loop : 'a . 'a context -> 'a state -> 'a result =
 		loop ctx state
 	| I.HandlingError env ->
 		(*print_endline (Printf.sprintf "[ERROR ] Token: %s, Last shift: %s" (print_token (fst state.last_offer)) (print_token (fst state.last_shift)));*)
-		let insert token =
+		let insert token p =
 			if has_debug ctx DInsert then begin
 				print_endline (Printf.sprintf "[INSERT] %s" (s_token token));
 			end;
 			let last_offer = state.last_offer in
-			let state = offer ctx state.recover_state (token,Lexing.dummy_pos,Lexing.dummy_pos) [] in
+			let state = offer ctx state.recover_state (token,p,p) [Flag "implicit"] in
 			insert_token ctx.com.token_provider last_offer;
 			loop ctx state
 		in
 		begin match state.last_shift with
-			| ((BRCLOSE,p1,_),_) when I.acceptable state.recover_state.checkpoint SEMICOLON p1 -> insert SEMICOLON
+			| ((BRCLOSE,p1,_),_) when I.acceptable state.recover_state.checkpoint SEMICOLON p1 -> insert SEMICOLON p1
 			| _ ->
 				(*let so = match Lazy.force (I.stack env) with
 					| M.Cons(I.Element(lrstate,_,_,_),_) -> (try Some (SyntaxErrors.message (I.number lrstate)) with Not_found -> None)
