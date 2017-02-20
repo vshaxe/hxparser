@@ -63,7 +63,7 @@ let rec preprocessor lexbuf =
 	| "#else" -> update lexbuf; SHARPELSE
 	| "#elseif" -> update lexbuf; SHARPELSEIF
 	| "#end" -> update lexbuf; SHARPEND
-	| "\n" | "\r\n" -> update lexbuf; new_line lexbuf; WHITESPACE (lexeme lexbuf)
+	| "\n" | "\r\n" -> update lexbuf; new_line lexbuf; NEWLINE (lexeme lexbuf)
 	| Plus (Compl ('#' | '\n' | '\r' | '/' | '"' | '~' | '\'')) -> update lexbuf; WHITESPACE (lexeme lexbuf)
 	| "//", Star (Compl ('\n' | '\r')) -> update lexbuf; WHITESPACE (lexeme lexbuf)
 	| '/' | '#' | '~' -> update lexbuf; WHITESPACE (lexeme lexbuf)
@@ -81,7 +81,7 @@ and token lexbuf =
 	(* whitespace *)
 	| eof -> update lexbuf; EOF
 	| Plus (Chars " \t\r") -> update lexbuf; WHITESPACE (lexeme lexbuf)
-	| "\n" | "\r\n" -> update lexbuf; new_line lexbuf; WHITESPACE (lexeme lexbuf)
+	| "\n" | "\r\n" -> update lexbuf; new_line lexbuf; NEWLINE (lexeme lexbuf)
 	| "//", Star (Compl ('\n' | '\r')) ->
 		let s = lexeme lexbuf in
 		update lexbuf;

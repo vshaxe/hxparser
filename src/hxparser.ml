@@ -10,6 +10,7 @@ let stdin_filename = "<stdin>"
 
 let parse filename =
 	let open Sedlex_menhir in
+	incr num_files;
 	let ch =
 		if filename = stdin_filename then (
 			set_binary_mode_in stdin true;
@@ -92,7 +93,6 @@ let explore_class_paths path =
 						let l = String.length file in
 						if l > 3 && String.sub file (l - 3) 3 = ".hx" then begin
 							let filename = dir ^ file in
-							incr num_files;
 							parse filename
 						end
 			) entries;

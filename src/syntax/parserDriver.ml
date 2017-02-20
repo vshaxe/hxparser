@@ -31,11 +31,6 @@ and tree =
 	| Node of string * tree list
 	| Leaf of token_info
 
-type lookahead_state =
-	| LANone
-	| LAToken of token_info
-	| LAActive
-
 type 'a state = {
 	tree : tree list;
 	in_dead_branch : bool;
@@ -43,12 +38,123 @@ type 'a state = {
 	checkpoint : 'a I.checkpoint;
 	last_offer : token_info;
 	last_shift : token_info;
-	inserted_tokens : token_info list;
-	lookahead_state : lookahead_state;
 }
 
+type 'a result =
+	| Accept of 'a * 'a state
+	| Reject of string list * 'a state
+
+module TokenProvider = struct
+	type t = {
+		lexbuf: lexbuf;
+		mutable inserted_tokens: token_info list;
+		mutable leading: tree list;
+		mutable trailing: token_info list;
+		mutable branches : ((expr * bool) * bool) list;
+	}
+
+	let consume_token tp =
+		tp.inserted_tokens <- List.tl tp.inserted_tokens
+
+	let rec fetch_token tp in_dead_branch =
+		let p1 = tp.lexbuf.pos in
+		let tk = (if in_dead_branch then Lexer.preprocessor else Lexer.token) tp.lexbuf in
+		let p2 = tp.lexbuf.pos in
+		process_token tp in_dead_branch (tk,p1,p2)
+
+	and process_token tp in_dead_branch (tk,p1,p2) =
+		let add_leading trivia =
+			tp.leading <- (Leaf (trivia,[])) :: tp.leading
+		in
+		let merge_leading tree =
+			tp.leading <- tp.leading @ tree
+		in
+		let provide () =
+			let token,trivia = fetch_token tp false in
+			merge_leading trivia;
+			token
+		in
+		let not_expr e = EUnop(Not,Prefix,e),snd e in
+		match tk with
+		| (WHITESPACE _ | NEWLINE _ | COMMENTLINE _ | COMMENT _) ->
+			add_leading (tk,p1,p2);
+			fetch_token tp in_dead_branch
+		| SHARPERROR ->
+			add_leading (tk,p1,p2);
+			let message_checkpoint = Parser.Incremental.sharp_error_message tp.lexbuf.pos in
+			let _ = I.loop provide message_checkpoint in
+			fetch_token tp in_dead_branch;
+		| SHARPLINE ->
+			add_leading (tk,p1,p2);
+			let line_number_checkpoint = Parser.Incremental.sharp_line_number tp.lexbuf.pos in
+			let _ = I.loop provide line_number_checkpoint in
+			fetch_token tp in_dead_branch;
+		| SHARPIF ->
+			add_leading (tk,p1,p2);
+			let cond_checkpoint = Parser.Incremental.sharp_condition tp.lexbuf.pos in
+			let cond = I.loop provide cond_checkpoint in
+			tp.branches <- ((cond,in_dead_branch),in_dead_branch) :: tp.branches;
+			fetch_token tp in_dead_branch;
+		| SHARPELSEIF ->
+			add_leading (tk,p1,p2);
+			let cond_checkpoint = Parser.Incremental.sharp_condition tp.lexbuf.pos in
+			let cond = I.loop provide cond_checkpoint in
+			begin match tp.branches with
+			| ((cond2,dead_branch),dead) :: branches ->
+				tp.branches <- ((cond,false),dead) :: branches;
+				fetch_token tp (dead || not dead_branch)
+			| [] -> assert false
+			end
+		| SHARPELSE ->
+			begin match tp.branches with
+			| ((cond,dead_branch),dead) :: branches ->
+				tp.branches <- ((not_expr cond,not dead_branch),dead) :: branches;
+				fetch_token tp (dead || not dead_branch)
+			| [] -> assert false
+			end
+		| SHARPEND ->
+			begin match tp.branches with
+			| (_,dead) :: branches ->
+				tp.branches <- branches;
+				fetch_token tp dead
+			| [] -> assert false
+			end
+		| _ ->
+			let token = match tk with
+				| SEMICOLON ->
+					begin match peek_token tp in_dead_branch with
+						| ((ELSE,_,_) as token),leading ->
+							consume_token tp;
+							tp.leading <- leading @ tp.leading;
+							token
+						| _ -> (tk,p1,p2)
+					end
+				| _ -> (tk,p1,p2)
+			in
+			let leading = tp.leading in
+			tp.leading <- [];
+			token,leading
+
+	and peek_token tp in_dead_branch =
+		let token,trivia = fetch_token tp in_dead_branch in
+		tp.inserted_tokens <- (token,trivia) :: tp.inserted_tokens;
+		token,trivia
+
+	let insert_token tp token =
+		tp.inserted_tokens <- token :: tp.inserted_tokens
+
+	let next_token tp in_dead_branch = match tp.inserted_tokens with
+		| (token,trivia) :: tokens when not in_dead_branch ->
+			tp.inserted_tokens <- tokens;
+			token,trivia
+		| _ ->
+			fetch_token tp in_dead_branch
+end
+
+open TokenProvider
+
 type common = {
-	lexbuf : lexbuf;
+	token_provider : TokenProvider.t;
 	config : parser_driver_config;
 	mutable json : Json.t list;
 }
@@ -57,10 +163,6 @@ type 'a context = {
 	com : common;
 	mutable branches : (expr * 'a state * ('a state * expr) list) list;
 }
-
-type 'a result =
-	| Accept of 'a * 'a state
-	| Reject of string list * 'a state
 
 let default_config () = {
 	debug_flags = [];
@@ -74,7 +176,13 @@ let create_context com = {
 }
 
 let create_common config lexbuf = {
-	lexbuf = lexbuf;
+	token_provider = {
+		lexbuf = lexbuf;
+		inserted_tokens = [];
+		leading = [];
+		trailing = [];
+		branches = [];
+	};
 	config = config;
 	json = [];
 }
@@ -88,8 +196,6 @@ let create_state checkpoint =
 		last_offer = dummy_token;
 		last_shift = dummy_token;
 		recover_state = state;
-		inserted_tokens = [];
-		lookahead_state = LANone;
 	} in
 	state
 
@@ -165,105 +271,7 @@ let offer ctx state token trivia =
 	state
 
 let rec input_needed : 'a . 'a context -> 'a state -> 'a result = fun ctx state ->
-	let token_from_lexer state = match state.inserted_tokens with
-		| (token,trivia) :: tokens when not state.in_dead_branch ->
-			{state with inserted_tokens = tokens},token,trivia
-		| _ ->
-			let p1 = ctx.com.lexbuf.pos in
-			let tk = (if state.in_dead_branch then Lexer.preprocessor else Lexer.token) ctx.com.lexbuf in
-			let p2 = ctx.com.lexbuf.pos in
-			state,(tk,p1,p2),[]
-	in
-	let not_expr e = EUnop(Not,Prefix,e),snd e in
-	let add_trivia token trivia =
-		Leaf(token,[]) :: trivia
-	in
-	let rec next_token state trivia =
-		let state,token,trivia2 = token_from_lexer state in
-		process_token state (token,trivia2 @ trivia)
-	and process_token state ((tk,p1,p2) as token,trivia) = match tk with
-		| (WHITESPACE _ | COMMENTLINE _) -> next_token state (add_trivia token trivia)
-		| COMMENT _ -> next_token state (add_trivia token trivia)
-		| SHARPERROR ->
-			let trivia = add_trivia token trivia in
-			let message_checkpoint = (Parser.Incremental.sharp_error_message ctx.com.lexbuf.pos) in
-			let state,trivia = match run ctx.com message_checkpoint with
-				| Accept(s,state') -> state,(state'.tree @ trivia)
-				(* TODO: this is probably not accurate, might need more state information from state2 *)
-				| Reject(_,state2) -> {state with inserted_tokens = state2.last_offer :: state.inserted_tokens},trivia
-			in
-			next_token state trivia
-		| SHARPLINE ->
-			let trivia = add_trivia token trivia in
-			let line_checkpoint = Parser.Incremental.sharp_line_number ctx.com.lexbuf.pos in
-			let trivia = match run ctx.com line_checkpoint with
-				| Accept(s,state) ->
-					let i = (try int_of_string s with _ -> (* TODO: Error somehow *) assert false) in
-					set_line ctx.com.lexbuf i;
-					state.tree @ trivia
-				| Reject _ -> (* TODO: Error somehow *) trivia
-			in
-			next_token state trivia
-		| SHARPIF ->
-			let trivia = add_trivia token trivia in
-			let cond_checkpoint = (Parser.Incremental.sharp_condition ctx.com.lexbuf.pos) in
-			let cond,trivia = match run ctx.com cond_checkpoint with
-				| Accept(e,state) -> e,(state.tree @ trivia)
-				| Reject _ -> assert false
-			in
-			let state2 = match state.lookahead_state with
-				| LAToken(token,trivia) -> {state with inserted_tokens = (token,trivia) :: state.inserted_tokens; lookahead_state = LAActive}
-				| _ -> state
-			in
-			ctx.branches <- (cond,state2,[]) :: ctx.branches;
-			next_token state trivia
-		| SHARPELSEIF ->
-			let trivia = add_trivia token trivia in
-			let cond_checkpoint = (Parser.Incremental.sharp_condition ctx.com.lexbuf.pos) in
-			let cond,trivia = match run ctx.com cond_checkpoint with
-				| Accept(e,state) -> e,(state.tree @ trivia)
-				| Reject _ -> assert false
-			in
-			begin match ctx.branches with
-			| (expr,state0,states) :: branches ->
-				ctx.branches <- (cond,state0,((state,expr) :: states)) :: branches;
-				next_token {state0 with in_dead_branch = true} trivia
-			| [] -> assert false
-			end
-		| SHARPELSE ->
-			begin match ctx.branches with
-			| (expr,state0,states) :: branches ->
-				ctx.branches <- (not_expr expr,state0,((state,expr) :: states)) :: branches;
-				next_token {state0 with in_dead_branch = true} (add_trivia token trivia)
-			| [] -> assert false
-			end
-		| SHARPEND ->
-			begin match ctx.branches with
-			| (expr,_,states) :: branches ->
-				ctx.branches <- branches;
-				begin match List.filter (fun (state,_) -> not state.in_dead_branch) ((state,expr) :: states) with
-				| [state,_] -> next_token state (add_trivia token trivia)
-				| _ -> next_token state (add_trivia token trivia)
-				end
-			| [] -> assert false
-			end
-		| SEMICOLON when state.lookahead_state = LANone ->
-			let clear_lookahead state = {state with lookahead_state = LANone} in
-			begin match next_token {state with lookahead_state = LAToken(token,trivia)} trivia with
-				| (state,((ELSE,p1,p2) as token2),trivia) ->
-					clear_lookahead state,token2,(trivia @ [Leaf(token,[])])
-				| (state2,token2,trivia2) ->
-					if state2.lookahead_state = LAActive then
-						clear_lookahead state,token2,trivia2
-					else begin
-						let state = {state with inserted_tokens = (token2,trivia2) :: state.inserted_tokens; lookahead_state = LANone} in
-						state,token,trivia
-					end
-			end
-		| _ ->
-			state,token,trivia
-	in
-	let state,token,trivia = next_token state [] in
+	let token,trivia = next_token ctx.com.token_provider false in
 	let state = offer ctx state token (List.rev trivia) in
 	loop ctx state
 
@@ -317,7 +325,7 @@ and loop : 'a . 'a context -> 'a state -> 'a result =
 			end;
 			let last_offer = state.last_offer in
 			let state = offer ctx state.recover_state (token,Lexing.dummy_pos,Lexing.dummy_pos) [] in
-			let state = {state with inserted_tokens = last_offer :: state.inserted_tokens } in
+			insert_token ctx.com.token_provider last_offer;
 			loop ctx state
 		in
 		begin match state.last_shift with

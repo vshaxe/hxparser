@@ -23,7 +23,7 @@ let make_is e (t,p_t) p p_is =
 %token <string> IDENT DOLLAR_IDENT DOT_IDENT STRING INT FLOAT METADATA METADATA_OPEN COMMENT
 %token <string * string> REGEX
 (* Comment these out if you generate messages, they are unused. *)
-%token <string> COMMENTLINE WHITESPACE
+%token <string> COMMENTLINE WHITESPACE NEWLINE
 %token SHARPIF SHARPELSE SHARPELSEIF SHARPEND SHARPERROR SHARPLINE
 
 (* Precedence *)

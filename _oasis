@@ -33,14 +33,17 @@ Library "haxe-context"
     BuildDepends: haxe-root
     Modules: Meta
     Install: false
+    Build: false
 
 Library "haxe-root"
     Path: src
     Modules: Globals
     Install: false
+    Build: false
 
 Library "haxe-syntax"
     Path: src/syntax
     BuildDepends: sedlex,menhirLib,haxe-context,haxe-root
     Modules: Sedlex_menhir
     Install: false
+    Build: false

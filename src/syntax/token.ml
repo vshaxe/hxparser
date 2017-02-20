@@ -113,6 +113,7 @@ let s_token tk = match tk with
 	| IS -> "is"
 	| EOF -> "<eof>"
 	| WHITESPACE s -> s
+	| NEWLINE s -> s
 
 let s_xsymbol x =
 	let open MenhirInterpreter in
@@ -188,6 +189,7 @@ let s_xsymbol x =
 		| T_VAR -> "var"
 		| T_EOF -> "#eof"
 		| T_WHITESPACE -> "#whitespace"
+		| T_NEWLINE -> "#newline"
 		| T_COMMENT -> "#comment"
 		| T_REGEX -> "#regex"
 		| T_COMMENTLINE -> "#commentline"
