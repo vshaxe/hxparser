@@ -86,7 +86,7 @@ module TokenProvider = struct
 		parse_expr: expr I.checkpoint -> expr result;
 		parse_number: string I.checkpoint -> string result;
 		parse_string: string I.checkpoint -> string result;
-		mutable inserted_tokens: token_info list;
+		inserted_tokens: token_info Queue.t;
 		mutable leading: tree list;
 		mutable trailing: token_info list;
 		mutable branches : ((expr * bool) * bool) list;
@@ -97,20 +97,23 @@ module TokenProvider = struct
 		parse_expr = parse_expr;
 		parse_number = parse_number;
 		parse_string = parse_string;
-		inserted_tokens = [];
+		inserted_tokens = Queue.create();
 		leading = [];
 		trailing = [];
 		branches = [];
 	}
 
 	let consume_token tp =
-		tp.inserted_tokens <- List.tl tp.inserted_tokens
+		ignore(Queue.pop tp.inserted_tokens)
 
-	let rec fetch_token tp in_dead_branch =
+	let lexer_token tp in_dead_branch =
 		let p1 = tp.lexbuf.pos in
 		let tk = (if in_dead_branch then Lexer.preprocessor else Lexer.token) tp.lexbuf in
 		let p2 = tp.lexbuf.pos in
-		process_token tp in_dead_branch (tk,p1,p2)
+		(tk,p1,p2)
+
+	let rec fetch_token tp in_dead_branch =
+		process_token tp in_dead_branch (lexer_token tp in_dead_branch)
 
 	and process_token tp in_dead_branch (tk,p1,p2) : token_info =
 		let add_leading trivia =
@@ -191,18 +194,20 @@ module TokenProvider = struct
 
 	and peek_token tp in_dead_branch =
 		let token,trivia = fetch_token tp in_dead_branch in
-		tp.inserted_tokens <- (token,trivia) :: tp.inserted_tokens;
+		Queue.push (token,trivia) tp.inserted_tokens;
 		token,trivia
 
 	let insert_token tp token =
-		tp.inserted_tokens <- token :: tp.inserted_tokens
+		Queue.push token tp.inserted_tokens
 
-	let next_token tp in_dead_branch = match tp.inserted_tokens with
-		| (token,trivia) :: tokens when not in_dead_branch ->
-			tp.inserted_tokens <- tokens;
+	let next_token tp in_dead_branch =
+		if Queue.is_empty tp.inserted_tokens then begin
+			let token,trivia = fetch_token tp in_dead_branch in
 			token,trivia
-		| _ ->
-			fetch_token tp in_dead_branch
+		end else begin
+			let token = Queue.pop tp.inserted_tokens in
+			token
+		end
 end
 
 module Context = struct
