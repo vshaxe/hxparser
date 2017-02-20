@@ -296,14 +296,16 @@ and loop : 'a . Context.t -> 'a State.t -> 'a result =
 			loop ctx state
 		in
 		let acceptable = I.acceptable state.recover_state.checkpoint in
+		let was_inserted trivia = List.mem TFInserted trivia.tflags in
 		begin match state.last_shift with
-			| ((BRCLOSE,p1,_),trivia) when not (List.mem TFInserted trivia.tflags) && acceptable SEMICOLON p1 -> insert SEMICOLON true p1
+			| ((BRCLOSE,p1,_),trivia) when not (was_inserted trivia) && acceptable SEMICOLON p1 -> insert SEMICOLON true p1
 			| _ ->
 				let p = ctx.token_provider.TokenProvider.lexbuf.pos in
 				if acceptable SEMICOLON p then insert SEMICOLON false p
 				else if acceptable PCLOSE p then insert PCLOSE false p
 				else if acceptable BRCLOSE p then insert BRCLOSE false p
 				else if acceptable BKCLOSE p then insert BKCLOSE false p
+				else if acceptable (IDENT "_") p then insert (IDENT "_") false p
 				else loop ctx {state with checkpoint = I.resume state.checkpoint};
 				(*let so = match Lazy.force (I.stack env) with
 					| M.Cons(I.Element(lrstate,_,_,_),_) -> (try Some (SyntaxErrors.message (I.number lrstate)) with Not_found -> None)
