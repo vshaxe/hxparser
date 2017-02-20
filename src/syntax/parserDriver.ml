@@ -334,5 +334,6 @@ and start : 'a . Context.t -> 'a I.checkpoint -> 'a result = fun ctx checkpoint 
 	let state = State.create checkpoint in
 	loop ctx state
 
-and run : 'a . Context.t -> 'a I.checkpoint -> 'a result = fun ctx checkpoint ->
+and run : 'a . Config.t -> lexbuf -> 'a I.checkpoint -> 'a result = fun config lexbuf checkpoint ->
+	let ctx = Context.create config lexbuf in
 	start ctx checkpoint
