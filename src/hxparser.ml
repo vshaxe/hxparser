@@ -17,9 +17,21 @@ module TreeToJson = struct
 
 	let rec to_json = function
 		| Leaf((token,p1,p2),trivia) ->
-			(*let trivia = List.map (fun t -> Leaf(t,[])) trivia in*)
+			let acc = ref [] in
+			begin match trivia.tleading with
+				| [] -> ()
+				| _ -> acc := ("leading",JArray (List.map to_json trivia.tleading)) :: !acc
+			end;
+			begin match trivia.ttrailing with
+				| [] -> ()
+				| _ -> acc := ("trailing",JArray (List.map to_json trivia.ttrailing)) :: !acc
+			end;
+			List.iter (function
+				| TFSkipped -> acc := ("skipped",JBool true) :: !acc
+				| TFImplicit -> acc := ("implicit",JBool true) :: !acc
+			) trivia.tflags;
 			let l = ("name",JString "token") :: ("token",JString (Token.s_token token)) :: ("start",pos_to_json p1) :: ("end",pos_to_json p2) ::
-				(match trivia with [] -> [] | _ -> ["trivia",JArray (List.map to_json trivia)]) in
+				(match !acc with | [] -> [] | trivia -> ["trivia",JObject trivia ]) in
 			JObject l
 		| Flag name -> JObject ["name",JString "flag";"flag",JString name]
 		| Node(_,[]) -> JNull

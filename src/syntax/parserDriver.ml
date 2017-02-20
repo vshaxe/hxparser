@@ -28,14 +28,30 @@ module Config = struct
 	}
 end
 
+type trivia_flag =
+	| TFImplicit
+	| TFSkipped
+
 type placed_token = (token * Lexing.position * Lexing.position)
 
-type token_info = placed_token * tree list
+type token_info = placed_token * trivia
 
 and tree =
 	| Node of string * tree list
 	| Leaf of token_info
 	| Flag of string
+
+and trivia = {
+	tleading: tree list;
+	ttrailing: tree list;
+	tflags : trivia_flag list;
+}
+
+let create_trivia flags = {
+	tleading = [];
+	ttrailing = [];
+	tflags = flags;
+}
 
 module State = struct
 	type 'a t = {
@@ -47,7 +63,7 @@ module State = struct
 	}
 
 	let create checkpoint =
-		let dummy_token = ((EOF,Lexing.dummy_pos,Lexing.dummy_pos),[]) in
+		let dummy_token = ((EOF,Lexing.dummy_pos,Lexing.dummy_pos),create_trivia []) in
 		let rec state = {
 			tree = [];
 			checkpoint = checkpoint;
@@ -89,12 +105,12 @@ module TokenProvider = struct
 		let p2 = tp.lexbuf.pos in
 		process_token tp in_dead_branch (tk,p1,p2)
 
-	and process_token tp in_dead_branch (tk,p1,p2) =
+	and process_token tp in_dead_branch (tk,p1,p2) : token_info =
 		let add_leading trivia =
-			tp.leading <- (Leaf (trivia,[])) :: tp.leading
+			tp.leading <- (Leaf (trivia,create_trivia [])) :: tp.leading
 		in
-		let merge_leading tree =
-			tp.leading <- tp.leading @ tree
+		let merge_leading trivia =
+			tp.leading <- tp.leading @ trivia.tleading
 		in
 		let provide () =
 			let token,trivia = fetch_token tp false in
@@ -149,18 +165,19 @@ module TokenProvider = struct
 		| _ ->
 			let leading = List.rev tp.leading in
 			tp.leading <- [];
-			let token,leading = match tk with
+			let trivia = { tleading = leading; ttrailing = []; tflags = [] } in
+			let token,trivia = match tk with
 				| SEMICOLON ->
 					begin match peek_token tp in_dead_branch with
-						| ((ELSE,_,_) as token),leading2 ->
-							let leading = (Leaf ((tk,p1,p2),((Flag "skipped" :: leading)))) :: leading2 in
+						| ((ELSE,_,_) as token),trivia2 ->
+							let trivia = {trivia2 with tleading = (Leaf ((tk,p1,p2),{trivia with tflags = TFSkipped :: trivia.tflags})) :: trivia2.tleading} in
 							consume_token tp;
-							token,leading
-						| _ -> (tk,p1,p2),leading
+							token,trivia
+						| _ -> (tk,p1,p2),trivia
 					end
-				| _ -> (tk,p1,p2),leading
+				| _ -> (tk,p1,p2),trivia
 			in
-			token,leading
+			token,trivia
 
 	and peek_token tp in_dead_branch =
 		let token,trivia = fetch_token tp in_dead_branch in
@@ -273,7 +290,7 @@ and loop : 'a . Context.t -> 'a State.t -> 'a result =
 				print_endline (Printf.sprintf "[INSERT] %s" (s_token token));
 			end;
 			let last_offer = state.last_offer in
-			let state = offer ctx state.recover_state (token,p,p) [Flag "implicit"] in
+			let state = offer ctx state.recover_state (token,p,p) (create_trivia [TFImplicit]) in
 			TokenProvider.insert_token ctx.token_provider last_offer;
 			loop ctx state
 		in
