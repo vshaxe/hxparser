@@ -3,7 +3,6 @@ open Sedlex_menhir
 open Printf
 open Parser
 open Token
-open Json
 
 module I = MenhirInterpreter
 module M = MenhirLib.General
@@ -20,7 +19,6 @@ type debug_kind =
 type parser_driver_config = {
 	mutable debug_flags : debug_kind list;
 	mutable build_parse_tree : bool;
-	mutable output_json : bool;
 }
 
 type placed_token = (token * Lexing.position * Lexing.position)
@@ -41,8 +39,8 @@ type 'a state = {
 }
 
 type 'a result =
-	| Accept of 'a * 'a state
-	| Reject of string list * 'a state
+	| Accept of 'a * tree list
+	| Reject of string list * tree list
 
 module TokenProvider = struct
 	type t = {
@@ -156,7 +154,6 @@ open TokenProvider
 type common = {
 	token_provider : TokenProvider.t;
 	config : parser_driver_config;
-	mutable json : Json.t list;
 }
 
 type 'a context = {
@@ -167,7 +164,6 @@ type 'a context = {
 let default_config () = {
 	debug_flags = [];
 	build_parse_tree = false;
-	output_json = false;
 }
 
 let create_context com = {
@@ -184,7 +180,6 @@ let create_common config lexbuf = {
 		branches = [];
 	};
 	config = config;
-	json = [];
 }
 
 let create_state checkpoint =
@@ -219,49 +214,6 @@ let rec print_tree tabs t = match t with
 let print_tree_list tree =
 	String.concat "\n" (List.map (fun t -> print_tree "" t) tree)
 
-let pos_to_json p =
-	let open Lexing in
-	JInt p.pos_cnum
-
-let rec to_json = function
-	| Leaf((token,p1,p2),trivia) ->
-		(*let trivia = List.map (fun t -> Leaf(t,[])) trivia in*)
-		let l = ("name",JString "token") :: ("token",JString (s_token token)) :: ("start",pos_to_json p1) :: ("end",pos_to_json p2) ::
-			(match trivia with [] -> [] | _ -> ["trivia",JArray (List.map to_json trivia)]) in
-		JObject l
-	| Node(_,[]) -> JNull
-	| Node(name1,[Node(name2,sub)]) -> to_json (Node((if name1 = "" then name2 else name1 ^ " " ^ name2),sub))
-	| Node(name,[t1]) ->
-		begin match to_json t1 with
-		| JNull -> JNull
-		| j -> (match name with "" -> j | _ -> JObject["name",JString name;"sub",JArray [j]])
-		end
-	| Node(name,tl) ->
-		begin match List.rev tl with
-			| Node(name2, tl2) :: tl when name = name2 -> to_json (Node(name,(List.rev tl) @ tl2))
-			| _ ->
-				let l = List.map to_json tl in
-				let l = List.filter (fun j -> j <> JNull) l in
-				match l with
-				| [] -> JNull
-				| _ ->
-					let j = JArray l in
-					(match name with "" -> j | _ -> JObject ["name",JString name;"sub",j])
-		end
-
-let rec print_json f = function
-	| JObject fl ->
-		begin try
-			let _ = List.assoc "name" fl in
-			print_json f (List.assoc "sub" fl)
-		with Not_found ->
-			(try print_json f (List.assoc "trivia" fl) with Not_found -> ());
-			print_json f (List.assoc "token" fl)
-		end
-	| JArray ja -> List.iter (print_json f) ja
-	| JString s -> f s
-	| _ -> assert false
-
 let offer ctx state token trivia =
 	if has_debug ctx DOffer then begin
 		print_endline (Printf.sprintf "[OFFER ] %s" (print_token token));
@@ -278,17 +230,13 @@ let rec input_needed : 'a . 'a context -> 'a state -> 'a result = fun ctx state 
 and loop : 'a . 'a context -> 'a state -> 'a result =
 	fun ctx state -> match state.checkpoint with
 	| I.Accepted v ->
-		if ctx.com.config.output_json then begin
-			let ja = JArray (List.map to_json state.tree) in
-			ctx.com.json <- ja :: ctx.com.json;
-		end;
 		if has_debug ctx DAccept then begin
 			if ctx.com.config.build_parse_tree then
 				print_endline (Printf.sprintf "[ACCEPT] %s" (print_tree_list state.tree))
 			else
 				print_endline "[ACCEPT]"
 		end;
-		Accept(v,state)
+		Accept(v,state.tree)
 	| I.InputNeeded _ ->
 		input_needed ctx state
 	| I.Shifting _ ->
@@ -350,11 +298,7 @@ and loop : 'a . 'a context -> 'a state -> 'a result =
 			messages := (Printf.sprintf "[REJECT] %s" (print_token (fst state.last_offer))) :: !messages;
 		end else
 			messages := "[REJECT]" :: !messages;
-		if ctx.com.config.output_json then begin
-			let ja = JArray (List.filter (fun j -> j <> JNull) (List.map to_json state.tree)) in
-			ctx.com.json <- ja :: ctx.com.json;
-		end;
-		Reject(!messages,state)
+		Reject(!messages,state.tree)
 
 and start : 'a . 'a context -> 'a I.checkpoint -> 'a result = fun ctx checkpoint ->
 	if has_debug ctx DStart then begin

@@ -3,10 +3,56 @@ open Json
 
 let config = default_config()
 let quit_early = ref true
+let output_json = ref false
 let num_files = ref 0
 let num_errors = ref 0
 
 let stdin_filename = "<stdin>"
+
+module TreeToJson = struct
+	let pos_to_json p =
+		let open Lexing in
+		JInt p.pos_cnum
+
+	let rec to_json = function
+		| Leaf((token,p1,p2),trivia) ->
+			(*let trivia = List.map (fun t -> Leaf(t,[])) trivia in*)
+			let l = ("name",JString "token") :: ("token",JString (Token.s_token token)) :: ("start",pos_to_json p1) :: ("end",pos_to_json p2) ::
+				(match trivia with [] -> [] | _ -> ["trivia",JArray (List.map to_json trivia)]) in
+			JObject l
+		| Node(_,[]) -> JNull
+		| Node(name1,[Node(name2,sub)]) -> to_json (Node((if name1 = "" then name2 else name1 ^ " " ^ name2),sub))
+		| Node(name,[t1]) ->
+			begin match to_json t1 with
+			| JNull -> JNull
+			| j -> (match name with "" -> j | _ -> JObject["name",JString name;"sub",JArray [j]])
+			end
+		| Node(name,tl) ->
+			begin match List.rev tl with
+				| Node(name2, tl2) :: tl when name = name2 -> to_json (Node(name,(List.rev tl) @ tl2))
+				| _ ->
+					let l = List.map to_json tl in
+					let l = List.filter (fun j -> j <> JNull) l in
+					match l with
+					| [] -> JNull
+					| _ ->
+						let j = JArray l in
+						(match name with "" -> j | _ -> JObject ["name",JString name;"sub",j])
+			end
+
+	let rec print_json f = function
+		| JObject fl ->
+			begin try
+				let _ = List.assoc "name" fl in
+				print_json f (List.assoc "sub" fl)
+			with Not_found ->
+				(try print_json f (List.assoc "trivia" fl) with Not_found -> ());
+				print_json f (List.assoc "token" fl)
+			end
+		| JArray ja -> List.iter (print_json f) ja
+		| JString s -> f s
+		| _ -> assert false
+end
 
 let parse filename =
 	let open Sedlex_menhir in
@@ -31,20 +77,27 @@ let parse filename =
 	begin try
 		let _ = Lexer.skip_header lexbuf in
 		let com = create_common config lexbuf in
-		let print_json () = match com.json with
+		let print_json tree = match tree with
 			| [] -> ()
-			| file :: _ ->
-				let js = JObject ["name",JString "document";"sub",file] in
+			| tl ->
+				let file = List.map (TreeToJson.to_json) tl in
+				let js = JObject ["name",JString "document";"sub",JArray file] in
 				let buffer = Buffer.create 0 in
 				write_json (Buffer.add_string buffer) js;
 				prerr_endline (Buffer.contents buffer);
 		in
 		begin match run com (Parser.Incremental.file lexbuf.pos) with
-			| _ when config.output_json ->
-				print_json ();
-				exit 0
-			| Reject(sl,_) -> report_error sl
-			| Accept _ -> ()
+			| Reject(sl,tree) ->
+				if !output_json then begin
+					print_json tree;
+					exit 0
+				end;
+				report_error sl
+			| Accept(_,tree) ->
+				if !output_json then begin
+					print_json tree;
+					exit 0;
+				end;
 		end;
 	with exc ->
 		report_error [Printexc.to_string exc];
@@ -106,7 +159,7 @@ let usage = Printf.sprintf "haxe.native [options] [files]"
 let args_spec = [
 	("--json", Arg.Unit (fun () ->
 		config.build_parse_tree <- true;
-		config.output_json <- true;
+		output_json := true;
 	),"generate JSON parse tree");
 	("--build-parse-tree", Arg.Unit (fun () ->
 		config.build_parse_tree <- true;
