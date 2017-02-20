@@ -1,7 +1,8 @@
 open ParserDriver
+open ParserDriver.Config
 open Json
 
-let config = default_config()
+let config = ParserDriver.Config.default_config()
 let quit_early = ref true
 let output_json = ref false
 let num_files = ref 0
@@ -77,7 +78,7 @@ let parse filename =
 	let lexbuf = create_lexbuf ~file:filename (Sedlexing.Utf8.from_channel ch) in
 	begin try
 		let _ = Lexer.skip_header lexbuf in
-		let ctx = create_context config lexbuf in
+		let ctx = ParserDriver.Context.create config lexbuf in
 		let print_json tree = match tree with
 			| [] -> ()
 			| tl ->

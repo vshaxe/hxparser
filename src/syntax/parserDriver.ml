@@ -7,19 +7,26 @@ open Token
 module I = MenhirInterpreter
 module M = MenhirLib.General
 
-type debug_kind =
-	| DStart
-	| DShift
-	| DReduce
-	| DOffer
-	| DInsert
-	| DAccept
-	| DReject
+module Config = struct
+	type debug_kind =
+		| DStart
+		| DShift
+		| DReduce
+		| DOffer
+		| DInsert
+		| DAccept
+		| DReject
 
-type parser_driver_config = {
-	mutable debug_flags : debug_kind list;
-	mutable build_parse_tree : bool;
-}
+	type t = {
+		mutable debug_flags : debug_kind list;
+		mutable build_parse_tree : bool;
+	}
+
+	let default_config () = {
+		debug_flags = [];
+		build_parse_tree = false;
+	}
+end
 
 type placed_token = (token * Lexing.position * Lexing.position)
 
@@ -30,13 +37,27 @@ and tree =
 	| Leaf of token_info
 	| Flag of string
 
-type 'a state = {
-	tree : tree list;
-	recover_state : 'a state;
-	checkpoint : 'a I.checkpoint;
-	last_offer : token_info;
-	last_shift : token_info;
-}
+module State = struct
+	type 'a t = {
+		tree : tree list;
+		recover_state : 'a t;
+		checkpoint : 'a I.checkpoint;
+		last_offer : token_info;
+		last_shift : token_info;
+	}
+
+	let create checkpoint =
+		let dummy_token = ((EOF,Lexing.dummy_pos,Lexing.dummy_pos),[]) in
+		let rec state = {
+			tree = [];
+			checkpoint = checkpoint;
+			last_offer = dummy_token;
+			last_shift = dummy_token;
+			recover_state = state;
+		} in
+		state
+
+end
 
 type 'a result =
 	| Accept of 'a * tree list
@@ -157,31 +178,21 @@ module TokenProvider = struct
 			fetch_token tp in_dead_branch
 end
 
-type context = {
-	token_provider : TokenProvider.t;
-	config : parser_driver_config;
-}
+module Context = struct
+	type t = {
+		token_provider : TokenProvider.t;
+		config : Config.t;
+	}
 
-let create_context config lexbuf ={
-	token_provider = TokenProvider.create lexbuf;
-	config = config;
-}
+	let create config lexbuf = {
+		token_provider = TokenProvider.create lexbuf;
+		config = config;
+	}
+end
 
-let default_config () = {
-	debug_flags = [];
-	build_parse_tree = false;
-}
-
-let create_state checkpoint =
-	let dummy_token = ((EOF,Lexing.dummy_pos,Lexing.dummy_pos),[]) in
-	let rec state = {
-		tree = [];
-		checkpoint = checkpoint;
-		last_offer = dummy_token;
-		last_shift = dummy_token;
-		recover_state = state;
-	} in
-	state
+open State
+open Context
+open Config
 
 let has_debug ctx flag = List.mem flag ctx.config.debug_flags
 
@@ -212,12 +223,12 @@ let offer ctx state token trivia =
 	let state = {state with last_offer = (token,trivia); checkpoint = checkpoint; recover_state = state} in
 	state
 
-let rec input_needed : 'a . context -> 'a state -> 'a result = fun ctx state ->
+let rec input_needed : 'a . Context.t -> 'a State.t -> 'a result = fun ctx state ->
 	let token,trivia = TokenProvider.next_token ctx.token_provider false in
 	let state = offer ctx state token trivia in
 	loop ctx state
 
-and loop : 'a . context -> 'a state -> 'a result =
+and loop : 'a . Context.t -> 'a State.t -> 'a result =
 	fun ctx state -> match state.checkpoint with
 	| I.Accepted v ->
 		if has_debug ctx DAccept then begin
@@ -290,12 +301,12 @@ and loop : 'a . context -> 'a state -> 'a result =
 			messages := "[REJECT]" :: !messages;
 		Reject(!messages,state.tree)
 
-and start : 'a . context -> 'a I.checkpoint -> 'a result = fun ctx checkpoint ->
+and start : 'a . Context.t -> 'a I.checkpoint -> 'a result = fun ctx checkpoint ->
 	if has_debug ctx DStart then begin
 		print_endline "[START ]"
 	end;
-	let state = create_state checkpoint in
+	let state = State.create checkpoint in
 	loop ctx state
 
-and run : 'a . context -> 'a I.checkpoint -> 'a result = fun ctx checkpoint ->
+and run : 'a . Context.t -> 'a I.checkpoint -> 'a result = fun ctx checkpoint ->
 	start ctx checkpoint
