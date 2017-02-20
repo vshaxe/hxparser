@@ -83,14 +83,20 @@ type 'a result =
 module TokenProvider = struct
 	type t = {
 		lexbuf: lexbuf;
+		parse_expr: expr I.checkpoint -> expr result;
+		parse_number: string I.checkpoint -> string result;
+		parse_string: string I.checkpoint -> string result;
 		mutable inserted_tokens: token_info list;
 		mutable leading: tree list;
 		mutable trailing: token_info list;
 		mutable branches : ((expr * bool) * bool) list;
 	}
 
-	let create lexbuf = {
+	let create lexbuf parse_expr parse_number parse_string = {
 		lexbuf = lexbuf;
+		parse_expr = parse_expr;
+		parse_number = parse_number;
+		parse_string = parse_string;
 		inserted_tokens = [];
 		leading = [];
 		trailing = [];
@@ -111,12 +117,13 @@ module TokenProvider = struct
 			tp.leading <- (Leaf (trivia,create_trivia [])) :: tp.leading
 		in
 		let merge_leading trivia =
-			tp.leading <- tp.leading @ trivia.tleading
+			tp.leading <- trivia.tleading @ tp.leading
 		in
-		let provide () =
-			let token,trivia = fetch_token tp false in
-			merge_leading trivia;
-			token
+		let parse f checkpoint = match f checkpoint with
+			| Accept(x,tree) ->
+				merge_leading {tleading = tree; ttrailing = []; tflags = [] };
+				x
+			| Reject _ -> raise Exit
 		in
 		let not_expr e = EUnop(Not,Prefix,e),snd e in
 		match tk with
@@ -126,23 +133,25 @@ module TokenProvider = struct
 		| SHARPERROR ->
 			add_leading (tk,p1,p2);
 			let message_checkpoint = Parser.Incremental.sharp_error_message tp.lexbuf.pos in
-			let _ = I.loop provide message_checkpoint in
+			(* TODO: this loses tokens if there is no message *)
+			let _ = (try parse tp.parse_string message_checkpoint with Exit -> "") in
 			fetch_token tp in_dead_branch;
 		| SHARPLINE ->
 			add_leading (tk,p1,p2);
 			let line_number_checkpoint = Parser.Incremental.sharp_line_number tp.lexbuf.pos in
-			let _ = I.loop provide line_number_checkpoint in
+			let line = parse tp.parse_number line_number_checkpoint in
+			set_line tp.lexbuf (try int_of_string line with _ -> assert false);
 			fetch_token tp in_dead_branch;
 		| SHARPIF ->
 			add_leading (tk,p1,p2);
 			let cond_checkpoint = Parser.Incremental.sharp_condition tp.lexbuf.pos in
-			let cond = I.loop provide cond_checkpoint in
+			let cond = parse tp.parse_expr cond_checkpoint in
 			tp.branches <- ((cond,in_dead_branch),in_dead_branch) :: tp.branches;
 			fetch_token tp in_dead_branch;
 		| SHARPELSEIF ->
 			add_leading (tk,p1,p2);
 			let cond_checkpoint = Parser.Incremental.sharp_condition tp.lexbuf.pos in
-			let cond = I.loop provide cond_checkpoint in
+			let cond = parse tp.parse_expr cond_checkpoint in
 			begin match tp.branches with
 			| ((cond2,dead_branch),dead) :: branches ->
 				tp.branches <- ((cond,false),dead) :: branches;
@@ -202,8 +211,8 @@ module Context = struct
 		config : Config.t;
 	}
 
-	let create config lexbuf = {
-		token_provider = TokenProvider.create lexbuf;
+	let create config lexbuf parse_expr parse_string parse_number = {
+		token_provider = TokenProvider.create lexbuf parse_expr parse_string parse_number;
 		config = config;
 	}
 end
@@ -335,5 +344,6 @@ and start : 'a . Context.t -> 'a I.checkpoint -> 'a result = fun ctx checkpoint 
 	loop ctx state
 
 and run : 'a . Config.t -> lexbuf -> 'a I.checkpoint -> 'a result = fun config lexbuf checkpoint ->
-	let ctx = Context.create config lexbuf in
+	(* This is astronomically stupid. *)
+	let ctx = Context.create config lexbuf (run config lexbuf) (run config lexbuf) (run config lexbuf) in
 	start ctx checkpoint
