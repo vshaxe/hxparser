@@ -30,6 +30,7 @@ end
 
 type trivia_flag =
 	| TFImplicit
+	| TFInserted
 	| TFSkipped
 
 type placed_token = (token * Lexing.position * Lexing.position)
@@ -285,18 +286,25 @@ and loop : 'a . Context.t -> 'a State.t -> 'a result =
 		loop ctx state
 	| I.HandlingError env ->
 		(*print_endline (Printf.sprintf "[ERROR ] Token: %s, Last shift: %s" (print_token (fst state.last_offer)) (print_token (fst state.last_shift)));*)
-		let insert token p =
+		let insert token allowed p =
 			if has_debug ctx DInsert then begin
 				print_endline (Printf.sprintf "[INSERT] %s" (s_token token));
 			end;
 			let last_offer = state.last_offer in
-			let state = offer ctx state.recover_state (token,p,p) (create_trivia [TFImplicit]) in
+			let state = offer ctx state.recover_state (token,p,p) (create_trivia [if allowed then TFImplicit else TFInserted]) in
 			TokenProvider.insert_token ctx.token_provider last_offer;
 			loop ctx state
 		in
+		let acceptable = I.acceptable state.recover_state.checkpoint in
 		begin match state.last_shift with
-			| ((BRCLOSE,p1,_),_) when I.acceptable state.recover_state.checkpoint SEMICOLON p1 -> insert SEMICOLON p1
+			| ((BRCLOSE,p1,_),trivia) when not (List.mem TFInserted trivia.tflags) && acceptable SEMICOLON p1 -> insert SEMICOLON true p1
 			| _ ->
+				let p = ctx.token_provider.TokenProvider.lexbuf.pos in
+				if acceptable SEMICOLON p then insert SEMICOLON false p
+				else if acceptable PCLOSE p then insert PCLOSE false p
+				else if acceptable BRCLOSE p then insert BRCLOSE false p
+				else if acceptable BKCLOSE p then insert BKCLOSE false p
+				else loop ctx {state with checkpoint = I.resume state.checkpoint};
 				(*let so = match Lazy.force (I.stack env) with
 					| M.Cons(I.Element(lrstate,_,_,_),_) -> (try Some (SyntaxErrors.message (I.number lrstate)) with Not_found -> None)
 					| _ -> None
@@ -305,7 +313,6 @@ and loop : 'a . Context.t -> 'a State.t -> 'a result =
 					| Some s -> print_endline s;
 					| None -> ()
 				end;*)
-				loop ctx {state with checkpoint = I.resume state.checkpoint};
 		end;
 	| I.Rejected ->
 		let messages = ref [] in

@@ -29,6 +29,7 @@ module TreeToJson = struct
 			List.iter (function
 				| TFSkipped -> acc := ("skipped",JBool true) :: !acc
 				| TFImplicit -> acc := ("implicit",JBool true) :: !acc
+				| TFInserted -> acc := ("inserted",JBool true) :: !acc
 			) trivia.tflags;
 			let l = ("name",JString "token") :: ("token",JString (Token.s_token token)) :: ("start",pos_to_json p1) :: ("end",pos_to_json p2) ::
 				(match !acc with | [] -> [] | trivia -> ["trivia",JObject trivia ]) in
