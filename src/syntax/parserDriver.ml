@@ -32,7 +32,6 @@ and tree =
 
 type 'a state = {
 	tree : tree list;
-	in_dead_branch : bool;
 	recover_state : 'a state;
 	checkpoint : 'a I.checkpoint;
 	last_offer : token_info;
@@ -50,6 +49,14 @@ module TokenProvider = struct
 		mutable leading: tree list;
 		mutable trailing: token_info list;
 		mutable branches : ((expr * bool) * bool) list;
+	}
+
+	let create lexbuf = {
+		lexbuf = lexbuf;
+		inserted_tokens = [];
+		leading = [];
+		trailing = [];
+		branches = [];
 	}
 
 	let consume_token tp =
@@ -150,16 +157,14 @@ module TokenProvider = struct
 			fetch_token tp in_dead_branch
 end
 
-open TokenProvider
-
-type common = {
+type context = {
 	token_provider : TokenProvider.t;
 	config : parser_driver_config;
 }
 
-type 'a context = {
-	com : common;
-	mutable branches : (expr * 'a state * ('a state * expr) list) list;
+let create_context config lexbuf ={
+	token_provider = TokenProvider.create lexbuf;
+	config = config;
 }
 
 let default_config () = {
@@ -167,27 +172,10 @@ let default_config () = {
 	build_parse_tree = false;
 }
 
-let create_context com = {
-	com = com;
-	branches = [];
-}
-
-let create_common config lexbuf = {
-	token_provider = {
-		lexbuf = lexbuf;
-		inserted_tokens = [];
-		leading = [];
-		trailing = [];
-		branches = [];
-	};
-	config = config;
-}
-
 let create_state checkpoint =
 	let dummy_token = ((EOF,Lexing.dummy_pos,Lexing.dummy_pos),[]) in
 	let rec state = {
 		tree = [];
-		in_dead_branch = false;
 		checkpoint = checkpoint;
 		last_offer = dummy_token;
 		last_shift = dummy_token;
@@ -195,7 +183,7 @@ let create_state checkpoint =
 	} in
 	state
 
-let has_debug ctx flag = List.mem flag ctx.com.config.debug_flags
+let has_debug ctx flag = List.mem flag ctx.config.debug_flags
 
 let print_position = Pos.Position.print
 
@@ -224,16 +212,16 @@ let offer ctx state token trivia =
 	let state = {state with last_offer = (token,trivia); checkpoint = checkpoint; recover_state = state} in
 	state
 
-let rec input_needed : 'a . 'a context -> 'a state -> 'a result = fun ctx state ->
-	let token,trivia = next_token ctx.com.token_provider false in
+let rec input_needed : 'a . context -> 'a state -> 'a result = fun ctx state ->
+	let token,trivia = TokenProvider.next_token ctx.token_provider false in
 	let state = offer ctx state token trivia in
 	loop ctx state
 
-and loop : 'a . 'a context -> 'a state -> 'a result =
+and loop : 'a . context -> 'a state -> 'a result =
 	fun ctx state -> match state.checkpoint with
 	| I.Accepted v ->
 		if has_debug ctx DAccept then begin
-			if ctx.com.config.build_parse_tree then
+			if ctx.config.build_parse_tree then
 				print_endline (Printf.sprintf "[ACCEPT] %s" (print_tree_list state.tree))
 			else
 				print_endline "[ACCEPT]"
@@ -248,7 +236,7 @@ and loop : 'a . 'a context -> 'a state -> 'a result =
 		end;
 		let state = {state with checkpoint = I.resume state.checkpoint; last_shift = token} in
 		let state =
-			if ctx.com.config.build_parse_tree then {state with tree = Leaf token :: state.tree}
+			if ctx.config.build_parse_tree then {state with tree = Leaf token :: state.tree}
 			else state
 		in
 		loop ctx state
@@ -257,7 +245,7 @@ and loop : 'a . 'a context -> 'a state -> 'a result =
 			| [] -> ()
 			| rhs -> print_endline (Printf.sprintf "[REDUCE] %s <- %s" (s_xsymbol (I.lhs production)) (String.concat " " (List.map s_xsymbol rhs)));
 		end;
-		let state = if ctx.com.config.build_parse_tree then begin
+		let state = if ctx.config.build_parse_tree then begin
 			let l = List.length (I.rhs production) in
 			let _,nodes1,nodes2 = List.fold_left (fun (i,l1,l2) x -> if i < l then (i + 1,x :: l1,l2) else (i + 1,l1,x :: l2)) (0,[],[]) state.tree in
 			let nodes2 = List.rev nodes2 in
@@ -275,7 +263,7 @@ and loop : 'a . 'a context -> 'a state -> 'a result =
 			end;
 			let last_offer = state.last_offer in
 			let state = offer ctx state.recover_state (token,p,p) [Flag "implicit"] in
-			insert_token ctx.com.token_provider last_offer;
+			TokenProvider.insert_token ctx.token_provider last_offer;
 			loop ctx state
 		in
 		begin match state.last_shift with
@@ -294,7 +282,7 @@ and loop : 'a . 'a context -> 'a state -> 'a result =
 	| I.Rejected ->
 		let messages = ref [] in
 		if has_debug ctx DReject then begin
-			if ctx.com.config.build_parse_tree then begin
+			if ctx.config.build_parse_tree then begin
 				messages := (Printf.sprintf "[REJECT] %s" (print_tree_list state.tree)) :: !messages;
 		end;
 			messages := (Printf.sprintf "[REJECT] %s" (print_token (fst state.last_offer))) :: !messages;
@@ -302,13 +290,12 @@ and loop : 'a . 'a context -> 'a state -> 'a result =
 			messages := "[REJECT]" :: !messages;
 		Reject(!messages,state.tree)
 
-and start : 'a . 'a context -> 'a I.checkpoint -> 'a result = fun ctx checkpoint ->
+and start : 'a . context -> 'a I.checkpoint -> 'a result = fun ctx checkpoint ->
 	if has_debug ctx DStart then begin
 		print_endline "[START ]"
 	end;
 	let state = create_state checkpoint in
 	loop ctx state
 
-and run : 'a . common -> 'a I.checkpoint -> 'a result = fun com checkpoint ->
-	let ctx = create_context com in
+and run : 'a . context -> 'a I.checkpoint -> 'a result = fun ctx checkpoint ->
 	start ctx checkpoint

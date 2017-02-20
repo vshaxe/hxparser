@@ -77,7 +77,7 @@ let parse filename =
 	let lexbuf = create_lexbuf ~file:filename (Sedlexing.Utf8.from_channel ch) in
 	begin try
 		let _ = Lexer.skip_header lexbuf in
-		let com = create_common config lexbuf in
+		let ctx = create_context config lexbuf in
 		let print_json tree = match tree with
 			| [] -> ()
 			| tl ->
@@ -87,7 +87,7 @@ let parse filename =
 				write_json (Buffer.add_string buffer) js;
 				prerr_endline (Buffer.contents buffer);
 		in
-		begin match run com (Parser.Incremental.file lexbuf.pos) with
+		begin match run ctx (Parser.Incremental.file lexbuf.pos) with
 			| Reject(sl,tree) ->
 				if !output_json then begin
 					print_json tree;
