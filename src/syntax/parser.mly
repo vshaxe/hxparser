@@ -181,7 +181,7 @@ const:
 
 object_field_name:
 	| name = dollar_ident { name }
-	| name = STRING { name }
+	| name = string { name }
 
 object_field:
 	| name = object_field_name; COLON; e = expr { ((name,mk $startpos(name) $endpos(name)),e) }
@@ -607,7 +607,7 @@ sharp_condition:
 	| e = sharp_condition_both { e }
 
 sharp_error_message:
-	| s = STRING { s }
+	| s = string { s }
 
 sharp_line_number:
 	| i = INT { i }
