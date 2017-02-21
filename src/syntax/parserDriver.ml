@@ -347,8 +347,13 @@ and loop : 'a . (Config.t * TokenProvider.t) -> 'a State.t -> 'a result =
 		end;
 		let state = if config.build_parse_tree then begin
 			let l = List.length (I.rhs production) in
-			let _,nodes1,nodes2 = List.fold_left (fun (i,l1,l2) x -> if i < l then (i + 1,x :: l1,l2) else (i + 1,l1,x :: l2)) (0,[],[]) state.tree in
-			let nodes2 = List.rev nodes2 in
+			let rec loop i acc nodes =
+				if i >= l then acc,nodes
+				else match nodes with
+					| hd :: tl -> loop (i + 1) (hd :: acc) tl
+					| [] -> assert false
+			in
+			let nodes1,nodes2 = loop 0 [] state.tree in
 			{state with tree = ((Node(s_xsymbol (I.lhs production),nodes1)) :: nodes2)}
 		end else
 			state
