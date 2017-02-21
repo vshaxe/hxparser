@@ -10,64 +10,17 @@ let num_errors = ref 0
 
 let stdin_filename = "<stdin>"
 
-module TreeToJson = struct
-	let pos_to_json p =
-		let open Lexing in
-		JInt p.pos_cnum
+module JSONConverter = JsonConverter.TreeToJson(struct
+	open Json
 
-	let rec to_json = function
-		| Leaf((token,p1,p2),trivia) ->
-			let acc = ref [] in
-			begin match trivia.tleading with
-				| [] -> ()
-				| _ -> acc := ("leading",JArray (List.map to_json trivia.tleading)) :: !acc
-			end;
-			begin match trivia.ttrailing with
-				| [] -> ()
-				| _ -> acc := ("trailing",JArray (List.map to_json trivia.ttrailing)) :: !acc
-			end;
-			List.iter (function
-				| TFSkipped -> acc := ("skipped",JBool true) :: !acc
-				| TFImplicit -> acc := ("implicit",JBool true) :: !acc
-				| TFInserted -> acc := ("inserted",JBool true) :: !acc
-			) trivia.tflags;
-			let l = ("name",JString "token") :: ("token",JString (Token.s_token token)) :: ("start",pos_to_json p1) :: ("end",pos_to_json p2) ::
-				(match !acc with | [] -> [] | trivia -> ["trivia",JObject trivia ]) in
-			JObject l
-		| Flag name -> JObject ["name",JString "flag";"flag",JString name]
-		| Node(_,[]) -> JNull
-		| Node(name1,[Node(name2,sub)]) -> to_json (Node((if name1 = "" then name2 else name1 ^ " " ^ name2),sub))
-		| Node(name,[t1]) ->
-			begin match to_json t1 with
-			| JNull -> JNull
-			| j -> (match name with "" -> j | _ -> JObject["name",JString name;"sub",JArray [j]])
-			end
-		| Node(name,tl) ->
-			begin match List.rev tl with
-				| Node(name2, tl2) :: tl when name = name2 -> to_json (Node(name,(List.rev tl) @ tl2))
-				| _ ->
-					let l = List.map to_json tl in
-					let l = List.filter (fun j -> j <> JNull) l in
-					match l with
-					| [] -> JNull
-					| _ ->
-						let j = JArray l in
-						(match name with "" -> j | _ -> JObject ["name",JString name;"sub",j])
-			end
-
-	let rec print_json f = function
-		| JObject fl ->
-			begin try
-				let _ = List.assoc "name" fl in
-				print_json f (List.assoc "sub" fl)
-			with Not_found ->
-				(try print_json f (List.assoc "trivia" fl) with Not_found -> ());
-				print_json f (List.assoc "token" fl)
-			end
-		| JArray ja -> List.iter (print_json f) ja
-		| JString s -> f s
-		| _ -> assert false
-end
+	type t = Json.t
+	let jobject l = JObject l
+	let jarray l = JArray l
+	let jint i = JInt i
+	let jstring s = JString s
+	let jbool b = JBool b
+	let jnull = JNull
+end)
 
 let parse filename =
 	let open Sedlex_menhir in
@@ -94,7 +47,7 @@ let parse filename =
 		let print_json tree = match tree with
 			| [] -> ()
 			| tl ->
-				let file = List.map (TreeToJson.to_json) tl in
+				let file = List.map (JSONConverter.to_json) tl in
 				let js = JObject ["name",JString "document";"sub",JArray file] in
 				let buffer = Buffer.create 0 in
 				write_json (Buffer.add_string buffer) js;

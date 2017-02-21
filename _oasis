@@ -28,22 +28,25 @@ Executable "hxparser"
     CompiledObject: native
     BuildDepends: menhirLib,sedlex,haxe-syntax,unix,str
 
+Executable "hxparserjs"
+    Path: src
+    MainIs: hxparserjs.ml
+    CompiledObject: byte
+    BuildDepends: menhirLib,sedlex,haxe-syntax,unix,str,js_of_ocaml,js_of_ocaml.ppx
+
 Library "haxe-context"
     Path: src/context
     BuildDepends: haxe-root
     Modules: Meta
     Install: false
-    Build: false
 
 Library "haxe-root"
     Path: src
-    Modules: Globals
+    Modules: Globals,Json
     Install: false
-    Build: false
 
 Library "haxe-syntax"
     Path: src/syntax
     BuildDepends: sedlex,menhirLib,haxe-context,haxe-root
     Modules: Sedlex_menhir
     Install: false
-    Build: false

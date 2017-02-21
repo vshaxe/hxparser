@@ -11,3 +11,5 @@ setup.ml
 Makefile
 _tags
 ignore.txt
+setup.log
+/bin/*
