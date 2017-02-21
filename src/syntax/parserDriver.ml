@@ -40,7 +40,6 @@ type token_info = placed_token * trivia
 and tree =
 	| Node of string * tree list
 	| Leaf of token_info
-	| Flag of string
 
 and trivia = {
 	tleading: tree list;
@@ -99,7 +98,6 @@ and print_tree tabs t = match t with
 			| Node(name2, tl2) :: tl when name = name2 -> print_tree tabs (Node(name,(List.rev tl) @ tl2))
 			| _ -> Printf.sprintf "%s%s" (match name with "" -> "" | _ -> name ^ ":") (String.concat "" (List.map (fun t -> match print_tree (tabs ^ "  ") t with "" -> "" | s -> "\n" ^ tabs ^ s) tl))
 		end
-	| Flag name -> name
 
 let print_tree_list tree =
 	String.concat "\n" (List.map (fun t -> print_tree "" t) tree)
@@ -300,7 +298,6 @@ let rec print_tree tabs t = match t with
 			| Node(name2, tl2) :: tl when name = name2 -> print_tree tabs (Node(name,(List.rev tl) @ tl2))
 			| _ -> Printf.sprintf "%s%s" (match name with "" -> "" | _ -> name ^ ":") (String.concat "" (List.map (fun t -> match print_tree (tabs ^ "  ") t with "" -> "" | s -> "\n" ^ tabs ^ s) tl))
 		end
-	| Flag name -> name
 
 let print_tree_list tree =
 	String.concat "\n" (List.map (fun t -> print_tree "" t) tree)

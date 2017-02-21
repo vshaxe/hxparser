@@ -34,7 +34,6 @@ module TreeToJson (Api : JsonApi) = struct
 			let l = ("name",Api.jstring "token") :: ("token",Api.jstring (Token.s_token token)) :: ("start",pos_to_json p1) :: ("end",pos_to_json p2) ::
 				(match !acc with | [] -> [] | trivia -> ["trivia",Api.jobject trivia ]) in
 			Api.jobject l
-		| Flag name -> Api.jobject ["name",Api.jstring "flag";"flag",Api.jstring name]
 		| Node(_,[]) -> Api.jnull
 		| Node(name1,[Node(name2,sub)]) -> to_json (Node((if name1 = "" then name2 else name1 ^ " " ^ name2),sub))
 		| Node(name,[t1]) ->
