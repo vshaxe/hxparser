@@ -48,7 +48,8 @@ let make_is e (t,p_t) p p_is =
 %left ARROW
 %right QUESTIONMARK
 %right POPEN BKOPEN BROPEN
-%left DOT_IDENT COLON
+%nonassoc NONDOT
+%left DOT_IDENT COLON DOT
 
 (* Start and types *)
 
@@ -102,11 +103,15 @@ ident:
 dollar_ident:
 	| s = ident | s = DOLLAR_IDENT { s }
 
+dot_ident:
+	| s = DOT_IDENT { s }
+	| DOT { "." }
+
 path:
-	| ident = dollar_ident; l = lplist(DOT_IDENT) { ident :: l }
+	| ident = dollar_ident; l = lplist(dot_ident) { ident :: l }
 
 path_with_pos:
-	| ident = pos(dollar_ident); l = lplist(pos(DOT_IDENT)) { ident :: l }
+	| ident = pos(dollar_ident); l = lplist(pos(dot_ident)) { ident :: l }
 
 (* Operators *)
 
@@ -166,7 +171,7 @@ string:
 
 literal:
 	| s = string { String s }
-	| s = INT { Int s }
+	| s = INT %prec NONDOT { Int s }
 	| s = FLOAT { Float s }
 	| s = REGEX { Regexp(fst s,snd s) }
 
@@ -303,7 +308,7 @@ expr_open:
 	| BKOPEN; el = array_elements; BKCLOSE { EArrayDecl el,mk $startpos $endpos }
 	| FUNCTION; f = func { EFunction(fst f,snd f),mk $startpos $endpos }
 	| op = unary_prefix; e1 = expr_inline { EUnop(op,Prefix,e1),mk $startpos $endpos }
-	| e1 = expr_open; name = DOT_IDENT { EField(e1,name),mk $startpos $endpos }
+	| e1 = expr_open; name = dot_ident { EField(e1,name),mk $startpos $endpos }
 	| e1 = expr_open; el = call_args { ECall(e1,el),mk $startpos $endpos }
 	| e1 = expr_open; BKOPEN; e2 = expr; BKCLOSE { EArray(e1,e2),mk $startpos $endpos }
 	| e1 = expr_open; op = op; e2 = expr_inline { EBinop(op,e1,e2),mk $startpos $endpos }

@@ -301,6 +301,7 @@ let s_xsymbol x =
 		| N_block_expr -> "block_expr"
 		| N_metadata -> "metadata"
 		| N_expr -> "expr"
+		| N_dot_ident -> "dot_ident"
 		(* options *)
 		| N_option_package_ -> ""
 		| N_option_type_hint_ -> ""
@@ -326,8 +327,8 @@ let s_xsymbol x =
 		| N_object_fields_next -> "fields"
 		| N_var_declarations -> "vars"
 		| N_var_declarations_next -> "vars"
-		| N_lplist_pos_DOT_IDENT__ -> "path"
-		| N_lplist_DOT_IDENT_ -> "path"
+		| N_lplist_pos_dot_ident__ -> "path"
+		| N_lplist_dot_ident_ -> "path"
 		| N_lplist_catch_ -> "catches"
 		| N_list_modifier_ -> "modifiers"
 		| N_list_common_flags_ -> "flags"
