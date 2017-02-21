@@ -80,23 +80,28 @@ type 'a result =
 	| Accept of 'a * tree list
 	| Reject of string list * tree list
 
+let print_position = Pos.Position.print
+
+let print_token (token,p1,p2) =
+	 Printf.sprintf "%s (%s - %s)" (s_token token) (print_position p1) (print_position p2)
+
 module TokenProvider = struct
 	type t = {
 		lexbuf: lexbuf;
-		parse_expr: expr I.checkpoint -> expr result;
-		parse_number: string I.checkpoint -> string result;
-		parse_string: string I.checkpoint -> string result;
 		inserted_tokens: token_info Queue.t;
+		mutable parse_expr: expr I.checkpoint -> expr result;
+		mutable parse_number: string I.checkpoint -> string result;
+		mutable parse_string: string I.checkpoint -> string result;
 		mutable leading: tree list;
 		mutable trailing: token_info list;
 		mutable branches : ((expr * bool) * bool) list;
 	}
 
-	let create lexbuf parse_expr parse_number parse_string = {
+	let create lexbuf = {
 		lexbuf = lexbuf;
-		parse_expr = parse_expr;
-		parse_number = parse_number;
-		parse_string = parse_string;
+		parse_expr = Obj.magic;
+		parse_number = Obj.magic;
+		parse_string = Obj.magic;
 		inserted_tokens = Queue.create();
 		leading = [];
 		trailing = [];
@@ -210,28 +215,10 @@ module TokenProvider = struct
 		end
 end
 
-module Context = struct
-	type t = {
-		token_provider : TokenProvider.t;
-		config : Config.t;
-	}
-
-	let create config lexbuf parse_expr parse_string parse_number = {
-		token_provider = TokenProvider.create lexbuf parse_expr parse_string parse_number;
-		config = config;
-	}
-end
-
 open State
-open Context
 open Config
 
-let has_debug ctx flag = List.mem flag ctx.config.debug_flags
-
-let print_position = Pos.Position.print
-
-let print_token (token,p1,p2) =
-	 Printf.sprintf "%s (%s - %s)" (s_token token) (print_position p1) (print_position p2)
+let has_debug config flag = List.mem flag config.debug_flags
 
 let rec print_tree tabs t = match t with
 	| Leaf(token,trivia) -> print_token token
@@ -247,48 +234,48 @@ let rec print_tree tabs t = match t with
 let print_tree_list tree =
 	String.concat "\n" (List.map (fun t -> print_tree "" t) tree)
 
-let offer ctx state token trivia =
-	if has_debug ctx DOffer then begin
+let offer config state token trivia =
+	if has_debug config DOffer then begin
 		print_endline (Printf.sprintf "[OFFER ] %s" (print_token token));
 	end;
 	let checkpoint = I.offer state.checkpoint token in
 	let state = {state with last_offer = (token,trivia); checkpoint = checkpoint; recover_state = state} in
 	state
 
-let rec input_needed : 'a . Context.t -> 'a State.t -> 'a result = fun ctx state ->
-	let token,trivia = TokenProvider.next_token ctx.token_provider false in
-	let state = offer ctx state token trivia in
-	loop ctx state
+let rec input_needed : 'a . (Config.t * TokenProvider.t) -> 'a State.t -> 'a result = fun (config,tp) state ->
+	let token,trivia = TokenProvider.next_token tp false in
+	let state = offer config state token trivia in
+	loop (config,tp) state
 
-and loop : 'a . Context.t -> 'a State.t -> 'a result =
-	fun ctx state -> match state.checkpoint with
+and loop : 'a . (Config.t * TokenProvider.t) -> 'a State.t -> 'a result =
+	fun (config,tp) state -> match state.checkpoint with
 	| I.Accepted v ->
-		if has_debug ctx DAccept then begin
-			if ctx.config.build_parse_tree then
+		if has_debug config DAccept then begin
+			if config.build_parse_tree then
 				print_endline (Printf.sprintf "[ACCEPT] %s" (print_tree_list state.tree))
 			else
 				print_endline "[ACCEPT]"
 		end;
 		Accept(v,state.tree)
 	| I.InputNeeded _ ->
-		input_needed ctx state
+		input_needed (config,tp) state
 	| I.Shifting _ ->
 		let token = state.last_offer in
-		if has_debug ctx DShift then begin
+		if has_debug config DShift then begin
 			let ((tk,_,_),_) = token in print_endline (Printf.sprintf "[SHIFT ] %s" (s_token tk));
 		end;
 		let state = {state with checkpoint = I.resume state.checkpoint; last_shift = token} in
 		let state =
-			if ctx.config.build_parse_tree then {state with tree = Leaf token :: state.tree}
+			if config.build_parse_tree then {state with tree = Leaf token :: state.tree}
 			else state
 		in
-		loop ctx state
+		loop (config,tp) state
 	| I.AboutToReduce(_,production) ->
-		if has_debug ctx DReduce then begin match I.rhs production with
+		if has_debug config DReduce then begin match I.rhs production with
 			| [] -> ()
 			| rhs -> print_endline (Printf.sprintf "[REDUCE] %s <- %s" (s_xsymbol (I.lhs production)) (String.concat " " (List.map s_xsymbol rhs)));
 		end;
-		let state = if ctx.config.build_parse_tree then begin
+		let state = if config.build_parse_tree then begin
 			let l = List.length (I.rhs production) in
 			let _,nodes1,nodes2 = List.fold_left (fun (i,l1,l2) x -> if i < l then (i + 1,x :: l1,l2) else (i + 1,l1,x :: l2)) (0,[],[]) state.tree in
 			let nodes2 = List.rev nodes2 in
@@ -297,30 +284,30 @@ and loop : 'a . Context.t -> 'a State.t -> 'a result =
 			state
 		in
 		let state = {state with checkpoint = I.resume state.checkpoint} in
-		loop ctx state
+		loop (config,tp) state
 	| I.HandlingError env ->
 		(*print_endline (Printf.sprintf "[ERROR ] Token: %s, Last shift: %s" (print_token (fst state.last_offer)) (print_token (fst state.last_shift)));*)
 		let insert token allowed p =
-			if has_debug ctx DInsert then begin
+			if has_debug config DInsert then begin
 				print_endline (Printf.sprintf "[INSERT] %s" (s_token token));
 			end;
 			let last_offer = state.last_offer in
-			let state = offer ctx state.recover_state (token,p,p) (create_trivia [if allowed then TFImplicit else TFInserted]) in
-			TokenProvider.insert_token ctx.token_provider last_offer;
-			loop ctx state
+			let state = offer config state.recover_state (token,p,p) (create_trivia [if allowed then TFImplicit else TFInserted]) in
+			TokenProvider.insert_token tp last_offer;
+			loop (config,tp) state
 		in
 		let acceptable = I.acceptable state.recover_state.checkpoint in
 		let was_inserted trivia = List.mem TFInserted trivia.tflags in
 		begin match state.last_shift with
 			| ((BRCLOSE,p1,_),trivia) when not (was_inserted trivia) && acceptable SEMICOLON p1 -> insert SEMICOLON true p1
 			| _ ->
-				let p = ctx.token_provider.TokenProvider.lexbuf.pos in
+				let p = tp.TokenProvider.lexbuf.pos in
 				if acceptable SEMICOLON p then insert SEMICOLON false p
 				else if acceptable PCLOSE p then insert PCLOSE false p
 				else if acceptable BRCLOSE p then insert BRCLOSE false p
 				else if acceptable BKCLOSE p then insert BKCLOSE false p
 				else if acceptable (IDENT "_") p then insert (IDENT "_") false p
-				else loop ctx {state with checkpoint = I.resume state.checkpoint};
+				else loop (config,tp) {state with checkpoint = I.resume state.checkpoint};
 				(*let so = match Lazy.force (I.stack env) with
 					| M.Cons(I.Element(lrstate,_,_,_),_) -> (try Some (SyntaxErrors.message (I.number lrstate)) with Not_found -> None)
 					| _ -> None
@@ -332,8 +319,8 @@ and loop : 'a . Context.t -> 'a State.t -> 'a result =
 		end;
 	| I.Rejected ->
 		let messages = ref [] in
-		if has_debug ctx DReject then begin
-			if ctx.config.build_parse_tree then begin
+		if has_debug config DReject then begin
+			if config.build_parse_tree then begin
 				messages := (Printf.sprintf "[REJECT] %s" (print_tree_list state.tree)) :: !messages;
 		end;
 			messages := (Printf.sprintf "[REJECT] %s" (print_token (fst state.last_offer))) :: !messages;
@@ -341,14 +328,17 @@ and loop : 'a . Context.t -> 'a State.t -> 'a result =
 			messages := "[REJECT]" :: !messages;
 		Reject(!messages,state.tree)
 
-and start : 'a . Context.t -> 'a I.checkpoint -> 'a result = fun ctx checkpoint ->
-	if has_debug ctx DStart then begin
+and start : 'a . (Config.t * TokenProvider.t) -> 'a I.checkpoint -> 'a result = fun (config,tp) checkpoint ->
+	if has_debug config DStart then begin
 		print_endline "[START ]"
 	end;
 	let state = State.create checkpoint in
-	loop ctx state
+	loop (config,tp) state
 
-and run : 'a . Config.t -> lexbuf -> 'a I.checkpoint -> 'a result = fun config lexbuf checkpoint ->
-	(* This is astronomically stupid. *)
-	let ctx = Context.create config lexbuf (run config lexbuf) (run config lexbuf) (run config lexbuf) in
-	start ctx checkpoint
+let run : 'a . Config.t -> lexbuf -> 'a I.checkpoint -> 'a result = fun config lexbuf checkpoint ->
+	let open TokenProvider in
+	let tp = TokenProvider.create lexbuf in
+	tp.parse_expr <- start (config,tp);
+	tp.parse_number <- start (config,tp);
+	tp.parse_string <- start (config,tp);
+	start (config,tp) checkpoint
