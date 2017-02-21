@@ -10,11 +10,12 @@ let s_token tk = match tk with
 	| DOLLAR_IDENT s -> "$" ^ s
 	| DOT_IDENT s -> "." ^ s
 	| STRING s -> "\"" ^ s ^ "\""
+	| STRING2 s -> "'" ^ s ^ "'"
 	| COMMENT s -> "/*" ^ s ^ "*/"
-	| REGEX(s1,s2) -> "~" ^ s1 ^ "/" ^ s2
+	| REGEX(s1,s2) -> "~/" ^ s1 ^ "/" ^ s2
 	| COMMENTLINE s -> "//" ^ s
-	| METADATA s -> s
-	| METADATA_OPEN s -> s
+	| METADATA s -> "@" ^ s
+	| METADATA_OPEN s -> "@" ^ s ^ "("
 	| INT s -> s
 	| FLOAT s -> s
 	| SHARPIF -> "#if"
@@ -129,6 +130,7 @@ let s_xsymbol x =
 		| T_DOT_IDENT -> "DOT_IDENT"
 		| T_DOLLAR_IDENT -> "DOLLAR_IDENT"
 		| T_STRING -> "STRING"
+		| T_STRING2 -> "STRING2"
 		| T_METADATA -> "METADATA"
 		| T_METADATA_OPEN -> "METADATA_OPEN"
 		| T_INT -> "INT"

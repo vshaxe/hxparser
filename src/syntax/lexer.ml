@@ -67,10 +67,13 @@ let rec preprocessor lexbuf =
 	| Plus (Compl ('#' | '\n' | '\r' | '/' | '"' | '~' | '\'')) -> update lexbuf; WHITESPACE (lexeme lexbuf)
 	| "//", Star (Compl ('\n' | '\r')) -> update lexbuf; WHITESPACE (lexeme lexbuf)
 	| '/' | '#' | '~' -> update lexbuf; WHITESPACE (lexeme lexbuf)
-	| "\"" -> update lexbuf; ignore(string (Buffer.create 0) lexbuf); WHITESPACE (lexeme lexbuf)
-	| "\'" -> update lexbuf; ignore(string2 (Buffer.create 0) lexbuf); WHITESPACE (lexeme lexbuf)
-	| "/*" -> update lexbuf; ignore(comment (Buffer.create 0) lexbuf); WHITESPACE (lexeme lexbuf)
-	| "~/" -> update lexbuf; ignore(regexp (Buffer.create 0) lexbuf); WHITESPACE (lexeme lexbuf)
+	| "\"" -> update lexbuf; WHITESPACE("\"" ^ string (Buffer.create 0) lexbuf ^ "\"")
+	| "\'" -> update lexbuf; WHITESPACE("'" ^ string2 (Buffer.create 0) lexbuf ^ "'")
+	| "/*" -> update lexbuf; WHITESPACE("/*" ^ comment (Buffer.create 0) lexbuf ^ "*/")
+	| "~/" ->
+		update lexbuf;
+		let s1,s2 = regexp (Buffer.create 0) lexbuf in
+		WHITESPACE("~/" ^ s1 ^ "/" ^ s2)
 	| _ ->
 		print_endline (Printf.sprintf "Invalid token %s at %s" (lexeme lexbuf) (Pos.Position.print lexbuf.pos));
 		assert false
@@ -191,8 +194,8 @@ and token lexbuf =
 	| "/" -> update lexbuf; SLASH
 	(* sequences *)
 	| "\"" -> STRING (string (Buffer.create 0) lexbuf)
-	| "\'" -> STRING (string2 (Buffer.create 0) lexbuf)
-	| "/*" -> comment (Buffer.create 0) lexbuf
+	| "\'" -> STRING2 (string2 (Buffer.create 0) lexbuf)
+	| "/*" -> COMMENT (comment (Buffer.create 0) lexbuf)
 	| "~/" -> REGEX (regexp (Buffer.create 0) lexbuf)
 	| '@',metadata_ident -> update lexbuf; METADATA (skip1 (lexeme lexbuf))
 	| '@',metadata_ident,"(" -> update lexbuf; METADATA_OPEN (let s = lexeme lexbuf in String.sub s 1 (String.length s - 2))
@@ -279,7 +282,7 @@ and comment buffer lexbuf =
 	match%sedlex buf with
 	| eof -> raise Exit
 	| '\n' | '\r' | "\r\n" -> new_line lexbuf; store(); comment buffer lexbuf
-	| "*/" -> update lexbuf; COMMENT (Buffer.contents buffer)
+	| "*/" -> update lexbuf; Buffer.contents buffer
 	| '*' -> store(); comment buffer lexbuf
 	| Plus (Compl ('*' | '\n' | '\r')) -> store(); comment buffer lexbuf
 	| _ -> assert false
@@ -298,7 +301,7 @@ and regexp buffer lexbuf =
 	| '\\', ('w' | 'W' | 'b' | 'B' | 's' | 'S' | 'd' | 'D' | 'x') -> store(); regexp buffer lexbuf
 	| '\\', ('u' | 'U'), ('0'..'9' | 'a'..'f' | 'A'..'F'), ('0'..'9' | 'a'..'f' | 'A'..'F'), ('0'..'9' | 'a'..'f' | 'A'..'F'), ('0'..'9' | 'a'..'f' | 'A'..'F') -> store(); regexp buffer lexbuf
 	(*| '\\', Compl '\\' -> error (Invalid_character (lexeme_char lexbuf 0)) (lexeme_end lexbuf - 1)*)
-	| '/' -> regexp_options lexbuf, Buffer.contents buffer
+	| '/' -> Buffer.contents buffer,regexp_options lexbuf
 	| Plus (Compl ('\\' | '/' | '\r' | '\n')) -> store(); regexp buffer lexbuf
 	| _ -> assert false
 

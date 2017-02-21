@@ -20,7 +20,7 @@ let make_is e (t,p_t) p p_is =
 %token EXCLAMATION PERCENT AND OR XOR DOTSTAR
 %token ASSIGNMOD ASSIGNAND ASSIGNOR ASSIGNXOR ASSIGNPLUS ASSIGNMINUS ASSIGNSTAR ASSIGNSLASH ASSIGNSHL ASSIGNBOOLOR ASSIGNBOOLAND
 %token INCREMENT DECREMENT TILDE
-%token <string> IDENT DOLLAR_IDENT DOT_IDENT STRING INT FLOAT METADATA METADATA_OPEN COMMENT
+%token <string> IDENT DOLLAR_IDENT DOT_IDENT STRING STRING2 INT FLOAT METADATA METADATA_OPEN COMMENT
 %token <string * string> REGEX
 (* Comment these out if you generate messages, they are unused. *)
 %token <string> COMMENTLINE WHITESPACE NEWLINE
@@ -167,7 +167,7 @@ path_with_pos:
 (* Expression *)
 
 string:
-	| s = STRING { s }
+	| s = STRING | s = STRING2 { s }
 
 literal:
 	| s = string { String s }
