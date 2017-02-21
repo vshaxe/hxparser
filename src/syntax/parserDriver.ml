@@ -85,6 +85,25 @@ let print_position = Pos.Position.print
 let print_token (token,p1,p2) =
 	 Printf.sprintf "%s (%s - %s)" (s_token token) (print_position p1) (print_position p2)
 
+let rec print_trivia trivia =
+	let l = (match trivia.tleading with [] -> [] | _ -> ["leading",String.concat ", " (List.map (fun t -> print_tree "" t) trivia.tleading)]) @
+	(match trivia.ttrailing with [] -> [] | _ -> ["trailing",String.concat ", " (List.map (fun t -> print_tree "" t) trivia.ttrailing)]) in
+	String.concat ", " (List.map (fun (name,s) -> Printf.sprintf "%s: %s" name s) l)
+
+and print_tree tabs t = match t with
+	| Leaf(token,trivia) -> Printf.sprintf "%s [%s]" (print_token token) (print_trivia trivia)
+	| Node(_,[]) -> ""
+	| Node(name,[t1]) -> (match name with "" -> "" | _ -> name ^ ": ") ^ (print_tree tabs t1)
+	| Node(name,tl) ->
+		begin match List.rev tl with
+			| Node(name2, tl2) :: tl when name = name2 -> print_tree tabs (Node(name,(List.rev tl) @ tl2))
+			| _ -> Printf.sprintf "%s%s" (match name with "" -> "" | _ -> name ^ ":") (String.concat "" (List.map (fun t -> match print_tree (tabs ^ "  ") t with "" -> "" | s -> "\n" ^ tabs ^ s) tl))
+		end
+	| Flag name -> name
+
+let print_tree_list tree =
+	String.concat "\n" (List.map (fun t -> print_tree "" t) tree)
+
 module TokenProvider = struct
 	type t = {
 		lexbuf: lexbuf;
@@ -151,7 +170,6 @@ module TokenProvider = struct
 		let token = if Queue.is_empty tp.token_cache then lexer_token tp
 		else Queue.pop tp.token_cache in
 		let token,trivia = process_token tp token in
-		let trivia = if tp.in_dead_branch then trivia else consume_trailing tp trivia in
 		token,trivia
 
 	and process_token tp (tk,p1,p2) : token_info =
@@ -211,6 +229,7 @@ module TokenProvider = struct
 			| [] -> assert false
 			end
 		| SHARPELSE ->
+			add_leading (tk,p1,p2);
 			begin match tp.branches with
 			| ((cond,dead_branch),dead) :: branches ->
 				tp.branches <- ((not_expr cond,not dead_branch),dead) :: branches;
@@ -219,6 +238,7 @@ module TokenProvider = struct
 			| [] -> assert false
 			end
 		| SHARPEND ->
+			add_leading (tk,p1,p2);
 			begin match tp.branches with
 			| (_,dead) :: branches ->
 				tp.branches <- branches;
@@ -235,10 +255,13 @@ module TokenProvider = struct
 	let next_token tp = match tp.inserted_token with
 		| None ->
 			let token,trivia = fetch_token tp in
+			let trivia = if tp.in_dead_branch then trivia else consume_trailing tp trivia in
 			begin match token with
 			| (SEMICOLON,_,_) ->
 				begin match fetch_token tp with
-				| ((ELSE,_,_) as token2,trivia2) -> token2,trivia2
+				| ((ELSE,_,_) as token2,trivia2) ->
+					let trivia2 = {trivia2 with tleading = (Leaf(token,{trivia with tflags = TFSkipped :: trivia.tflags}) :: trivia2.tleading)} in
+					token2,trivia2
 				| token2 ->
 					insert_token tp token2;
 					token,trivia
