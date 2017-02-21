@@ -129,6 +129,9 @@ module TokenProvider = struct
 		in_dead_branch = false;
 	}
 
+	let add_skipped tp (token,trivia) =
+		tp.leading <- Leaf(token,{trivia with tflags = TFSkipped :: trivia.tflags}) :: tp.leading
+
 	let insert_token tp token =
 		tp.inserted_tokens <- token :: tp.inserted_tokens
 
@@ -375,7 +378,12 @@ and loop : 'a . (Config.t * TokenProvider.t) -> 'a State.t -> 'a result =
 				else if acceptable BRCLOSE p then insert BRCLOSE false p
 				else if acceptable BKCLOSE p then insert BKCLOSE false p
 				else if acceptable (IDENT "_") p then insert (IDENT "_") false p
-				else loop (config,tp) {state with checkpoint = I.resume state.checkpoint};
+				else begin match state.last_offer with
+					| ((EOF,_,_),_) -> loop (config,tp) {state with checkpoint = I.resume state.checkpoint}
+					| (token,trivia) ->
+						TokenProvider.add_skipped tp (token,trivia);
+						loop (config,tp) state.recover_state
+				end
 				(*let so = match Lazy.force (I.stack env) with
 					| M.Cons(I.Element(lrstate,_,_,_),_) -> (try Some (SyntaxErrors.message (I.number lrstate)) with Not_found -> None)
 					| _ -> None
