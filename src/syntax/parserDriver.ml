@@ -88,13 +88,14 @@ let print_token (token,p1,p2) =
 module TokenProvider = struct
 	type t = {
 		lexbuf: lexbuf;
-		inserted_tokens: token_info Queue.t;
 		mutable parse_expr: expr I.checkpoint -> expr result;
 		mutable parse_number: string I.checkpoint -> string result;
 		mutable parse_string: string I.checkpoint -> string result;
+		token_cache: placed_token Queue.t;
+		mutable inserted_token : token_info option;
 		mutable leading: tree list;
-		mutable trailing: token_info list;
 		mutable branches : ((expr * bool) * bool) list;
+		mutable in_dead_branch : bool;
 	}
 
 	let create lexbuf = {
@@ -102,25 +103,58 @@ module TokenProvider = struct
 		parse_expr = Obj.magic;
 		parse_number = Obj.magic;
 		parse_string = Obj.magic;
-		inserted_tokens = Queue.create();
+		token_cache = Queue.create();
+		inserted_token = None;
 		leading = [];
-		trailing = [];
 		branches = [];
+		in_dead_branch = false;
 	}
 
-	let consume_token tp =
-		ignore(Queue.pop tp.inserted_tokens)
+	let insert_token tp token =
+		assert (tp.inserted_token = None);
+		tp.inserted_token <- Some token
 
-	let lexer_token tp in_dead_branch =
+	let consume_token tp =
+		let _ = Queue.pop tp.token_cache in
+		()
+
+	let lexer_token tp =
 		let p1 = tp.lexbuf.pos in
-		let tk = (if in_dead_branch then Lexer.preprocessor else Lexer.token) tp.lexbuf in
+		let tk = (if tp.in_dead_branch then Lexer.preprocessor else Lexer.token) tp.lexbuf in
 		let p2 = tp.lexbuf.pos in
 		(tk,p1,p2)
 
-	let rec fetch_token tp in_dead_branch =
-		process_token tp in_dead_branch (lexer_token tp in_dead_branch)
+	let peek_token tp =
+		let token = if Queue.is_empty tp.token_cache then begin
+			let token = lexer_token tp in
+			Queue.push token tp.token_cache;
+			token
+		end else
+			Queue.peek tp.token_cache
+		in
+		token
 
-	and process_token tp in_dead_branch (tk,p1,p2) : token_info =
+	let consume_trailing tp trivia =
+		let rec loop acc = match peek_token tp with
+			| ((WHITESPACE _ | COMMENT _ | COMMENTLINE _),_,_) as token ->
+				consume_token tp;
+				loop ((Leaf(token,create_trivia [])) :: acc)
+			| (NEWLINE _,_,_) as token ->
+				consume_token tp;
+				List.rev (Leaf(token,create_trivia []) :: acc)
+			| _ ->
+				List.rev acc
+		in
+		{trivia with ttrailing = loop []}
+
+	let rec fetch_token tp =
+		let token = if Queue.is_empty tp.token_cache then lexer_token tp
+		else Queue.pop tp.token_cache in
+		let token,trivia = process_token tp token in
+		let trivia = if tp.in_dead_branch then trivia else consume_trailing tp trivia in
+		token,trivia
+
+	and process_token tp (tk,p1,p2) : token_info =
 		let add_leading trivia =
 			tp.leading <- (Leaf (trivia,create_trivia [])) :: tp.leading
 		in
@@ -137,82 +171,83 @@ module TokenProvider = struct
 		match tk with
 		| (WHITESPACE _ | NEWLINE _ | COMMENTLINE _ | COMMENT _) ->
 			add_leading (tk,p1,p2);
-			fetch_token tp in_dead_branch
+			fetch_token tp
 		| SHARPERROR ->
 			add_leading (tk,p1,p2);
 			let message_checkpoint = Parser.Incremental.sharp_error_message tp.lexbuf.pos in
 			(* TODO: this loses tokens if there is no message *)
 			let _ = (try parse tp.parse_string message_checkpoint with Exit -> "") in
-			fetch_token tp in_dead_branch;
+			fetch_token tp;
 		| SHARPLINE ->
 			add_leading (tk,p1,p2);
 			let line_number_checkpoint = Parser.Incremental.sharp_line_number tp.lexbuf.pos in
 			let line = parse tp.parse_number line_number_checkpoint in
 			set_line tp.lexbuf (try int_of_string line with _ -> assert false);
-			fetch_token tp in_dead_branch;
+			fetch_token tp;
+		| SHARPIF when tp.in_dead_branch ->
+			add_leading (tk,p1,p2);
+			(* We have to push _something_ on the stack so the #end can consume it. Parsing the
+			   condition could arrive at the #end immediately. *)
+			tp.branches <- (((EConst (Ident "false"),Pos.Range.null),true),true) :: tp.branches;
+			fetch_token tp;
 		| SHARPIF ->
 			add_leading (tk,p1,p2);
 			let cond_checkpoint = Parser.Incremental.sharp_condition tp.lexbuf.pos in
 			let cond = parse tp.parse_expr cond_checkpoint in
-			tp.branches <- ((cond,in_dead_branch),in_dead_branch) :: tp.branches;
-			fetch_token tp in_dead_branch;
+			tp.branches <- ((cond,tp.in_dead_branch),tp.in_dead_branch) :: tp.branches;
+			fetch_token tp;
 		| SHARPELSEIF ->
 			add_leading (tk,p1,p2);
-			let cond_checkpoint = Parser.Incremental.sharp_condition tp.lexbuf.pos in
-			let cond = parse tp.parse_expr cond_checkpoint in
 			begin match tp.branches with
+			| ((_,b1),b2) :: _ when not b1 || b2 ->
+				tp.in_dead_branch <- true;
+				fetch_token tp
 			| ((cond2,dead_branch),dead) :: branches ->
+				let cond_checkpoint = Parser.Incremental.sharp_condition tp.lexbuf.pos in
+				let cond = parse tp.parse_expr cond_checkpoint in
 				tp.branches <- ((cond,false),dead) :: branches;
-				fetch_token tp (dead || not dead_branch)
+				if dead || not dead_branch then tp.in_dead_branch <- true;
+				fetch_token tp
 			| [] -> assert false
 			end
 		| SHARPELSE ->
 			begin match tp.branches with
 			| ((cond,dead_branch),dead) :: branches ->
 				tp.branches <- ((not_expr cond,not dead_branch),dead) :: branches;
-				fetch_token tp (dead || not dead_branch)
+				if dead || not dead_branch then tp.in_dead_branch <- true;
+				fetch_token tp
 			| [] -> assert false
 			end
 		| SHARPEND ->
 			begin match tp.branches with
 			| (_,dead) :: branches ->
 				tp.branches <- branches;
-				fetch_token tp dead
+				tp.in_dead_branch <- dead;
+				fetch_token tp
 			| [] -> assert false
 			end
 		| _ ->
 			let leading = List.rev tp.leading in
 			tp.leading <- [];
 			let trivia = { tleading = leading; ttrailing = []; tflags = [] } in
-			let token,trivia = match tk with
-				| SEMICOLON ->
-					begin match peek_token tp in_dead_branch with
-						| ((ELSE,_,_) as token),trivia2 ->
-							let trivia = {trivia2 with tleading = (Leaf ((tk,p1,p2),{trivia with tflags = TFSkipped :: trivia.tflags})) :: trivia2.tleading} in
-							consume_token tp;
-							token,trivia
-						| _ -> (tk,p1,p2),trivia
-					end
-				| _ -> (tk,p1,p2),trivia
-			in
-			token,trivia
+			(tk,p1,p2),trivia
 
-	and peek_token tp in_dead_branch =
-		let token,trivia = fetch_token tp in_dead_branch in
-		Queue.push (token,trivia) tp.inserted_tokens;
-		token,trivia
-
-	let insert_token tp token =
-		Queue.push token tp.inserted_tokens
-
-	let next_token tp in_dead_branch =
-		if Queue.is_empty tp.inserted_tokens then begin
-			let token,trivia = fetch_token tp in_dead_branch in
-			token,trivia
-		end else begin
-			let token = Queue.pop tp.inserted_tokens in
+	let next_token tp = match tp.inserted_token with
+		| None ->
+			let token,trivia = fetch_token tp in
+			begin match token with
+			| (SEMICOLON,_,_) ->
+				begin match fetch_token tp with
+				| ((ELSE,_,_) as token2,trivia2) -> token2,trivia2
+				| token2 ->
+					insert_token tp token2;
+					token,trivia
+				end
+			| _ -> token,trivia
+			end
+		| Some token ->
+			tp.inserted_token <- None;
 			token
-		end
 end
 
 open State
@@ -243,7 +278,7 @@ let offer config state token trivia =
 	state
 
 let rec input_needed : 'a . (Config.t * TokenProvider.t) -> 'a State.t -> 'a result = fun (config,tp) state ->
-	let token,trivia = TokenProvider.next_token tp false in
+	let token,trivia = TokenProvider.next_token tp in
 	let state = offer config state token trivia in
 	loop (config,tp) state
 
