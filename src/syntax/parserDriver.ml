@@ -111,7 +111,7 @@ module TokenProvider = struct
 		mutable parse_number: string I.checkpoint -> string result;
 		mutable parse_string: string I.checkpoint -> string result;
 		token_cache: placed_token Queue.t;
-		mutable inserted_token : token_info option;
+		mutable inserted_tokens : token_info list;
 		mutable leading: tree list;
 		mutable branches : ((expr * bool) * bool) list;
 		mutable in_dead_branch : bool;
@@ -123,15 +123,14 @@ module TokenProvider = struct
 		parse_number = Obj.magic;
 		parse_string = Obj.magic;
 		token_cache = Queue.create();
-		inserted_token = None;
+		inserted_tokens = [];
 		leading = [];
 		branches = [];
 		in_dead_branch = false;
 	}
 
 	let insert_token tp token =
-		assert (tp.inserted_token = None);
-		tp.inserted_token <- Some token
+		tp.inserted_tokens <- token :: tp.inserted_tokens
 
 	let consume_token tp =
 		let _ = Queue.pop tp.token_cache in
@@ -164,7 +163,16 @@ module TokenProvider = struct
 			| _ ->
 				List.rev acc
 		in
-		{trivia with ttrailing = loop []}
+		(* Most of the time, trivia.ttrailing is empty here, but inserted tokens
+		   might have it populated already. In that case we should only read more
+		   trailing tokens if there wasn't any newline or physical token already. *)
+		if List.exists (function
+			| Leaf(((WHITESPACE _ | COMMENT _ | COMMENTLINE _),_,_),_) -> false
+			| _ -> true
+		) trivia.ttrailing then
+			trivia
+		else
+			{trivia with ttrailing = trivia.ttrailing @ loop []}
 
 	let rec fetch_token tp =
 		let token = if Queue.is_empty tp.token_cache then lexer_token tp
@@ -252,8 +260,8 @@ module TokenProvider = struct
 			let trivia = { tleading = leading; ttrailing = []; tflags = [] } in
 			(tk,p1,p2),trivia
 
-	let next_token tp = match tp.inserted_token with
-		| None ->
+	let next_token tp = match tp.inserted_tokens with
+		| [] ->
 			let token,trivia = fetch_token tp in
 			let trivia = consume_trailing tp trivia in
 			begin match token with
@@ -269,9 +277,9 @@ module TokenProvider = struct
 				end
 			| _ -> token,trivia
 			end
-		| Some(token,trivia) ->
+		| (token,trivia) :: tokens ->
+			tp.inserted_tokens <- tokens;
 			let trivia = consume_trailing tp trivia in
-			tp.inserted_token <- None;
 			token,trivia
 end
 
