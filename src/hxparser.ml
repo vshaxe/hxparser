@@ -195,6 +195,9 @@ let args_spec = [
 		compare := true;
 		config.build_parse_tree <- true;
 	),"compare roundtripped parse result with source file");
+	("--recover", Arg.Unit (fun () ->
+		config.recover <- true;
+	),"silently recover if possible");
 ]
 let paths = ref []
 let process args =

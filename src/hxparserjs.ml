@@ -15,6 +15,7 @@ end)
 let config = {
 	debug_flags = [];
 	build_parse_tree = true;
+	recover = true;
 }
 
 let parse filename s =

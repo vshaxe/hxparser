@@ -20,11 +20,13 @@ module Config = struct
 	type t = {
 		mutable debug_flags : debug_kind list;
 		mutable build_parse_tree : bool;
+		mutable recover : bool;
 	}
 
 	let default_config () = {
 		debug_flags = [];
 		build_parse_tree = false;
+		recover = false;
 	}
 end
 
@@ -366,8 +368,12 @@ and loop : 'a . (Config.t * TokenProvider.t) -> 'a State.t -> 'a result =
 		in
 		let acceptable = I.acceptable state.recover_state.checkpoint in
 		let was_inserted trivia = List.mem TFInserted trivia.tflags in
+		let fail () =
+			loop (config,tp) {state with checkpoint = I.resume state.checkpoint}
+		in
 		begin match state.last_shift with
 			| ((BRCLOSE,p1,_),trivia) when not (was_inserted trivia) && acceptable SEMICOLON p1 -> insert SEMICOLON true p1
+			| _ when not config.recover -> fail()
 			| _ ->
 				let p = tp.TokenProvider.lexbuf.pos in
 				if acceptable SEMICOLON p then insert SEMICOLON false p
@@ -376,7 +382,7 @@ and loop : 'a . (Config.t * TokenProvider.t) -> 'a State.t -> 'a result =
 				else if acceptable BKCLOSE p then insert BKCLOSE false p
 				else if acceptable (IDENT "_") p then insert (IDENT "_") false p
 				else begin match state.last_offer with
-					| ((EOF,_,_),_) -> loop (config,tp) {state with checkpoint = I.resume state.checkpoint}
+					| ((EOF,_,_),_) -> fail()
 					| (token,trivia) ->
 						TokenProvider.add_skipped tp (token,trivia);
 						loop (config,tp) state.recover_state
