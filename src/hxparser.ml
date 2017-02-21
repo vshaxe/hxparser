@@ -7,6 +7,7 @@ let quit_early = ref true
 let output_json = ref false
 let num_files = ref 0
 let num_errors = ref 0
+let compare = ref false
 
 let stdin_filename = "<stdin>"
 
@@ -21,6 +22,29 @@ module JSONConverter = JsonConverter.TreeToJson(struct
 	let jbool b = JBool b
 	let jnull = JNull
 end)
+
+let to_haxe tree =
+	let buf = Buffer.create 0 in
+	let rec loop = function
+	| Node(_,tl) -> List.iter loop tl
+	| Leaf((tk,_,_),trivia) ->
+		List.iter loop trivia.tleading;
+		if not (List.exists (function TFImplicit | TFInserted -> true | TFSkipped -> false) trivia.tflags) then begin
+			if tk <> Parser.EOF then
+				Buffer.add_string buf (Token.s_token tk)
+		end;
+		List.iter loop trivia.ttrailing
+	in
+	List.iter loop tree;
+	Buffer.contents buf
+
+let load_file f =
+  let ic = open_in_bin f in
+  let n = in_channel_length ic in
+  let s = Bytes.create n in
+  really_input ic s 0 n;
+  close_in ic;
+  s
 
 let parse filename =
 	let open Sedlex_menhir in
@@ -61,6 +85,20 @@ let parse filename =
 				end;
 				report_error sl
 			| Accept(_,tree) ->
+				if !compare && config.build_parse_tree then begin
+					let s1 = to_haxe tree in
+					let s2 = load_file filename in
+					if s1 <> s2 then begin
+						let ch = open_out_bin "file_actual.txt" in
+						output_bytes ch (filename ^ "\n" ^ s1);
+						close_out ch;
+						let ch = open_out_bin "file_expected.txt" in
+						output_bytes ch (filename ^ "\n" ^ s2);
+						close_out ch;
+						print_endline (filename ^ " differs!");
+						exit 1;
+					end
+				end;
 				if !output_json then begin
 					print_json tree;
 					exit 0;
@@ -153,6 +191,10 @@ let args_spec = [
 	("--keep-going", Arg.Unit (fun () ->
 		quit_early := false
 	),"don't quit if there's an exception");
+	("--compare", Arg.Unit (fun () ->
+		compare := true;
+		config.build_parse_tree <- true;
+	),"compare roundtripped parse result with source file");
 ]
 let paths = ref []
 let process args =
