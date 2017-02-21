@@ -255,11 +255,12 @@ module TokenProvider = struct
 	let next_token tp = match tp.inserted_token with
 		| None ->
 			let token,trivia = fetch_token tp in
-			let trivia = if tp.in_dead_branch then trivia else consume_trailing tp trivia in
+			let trivia = consume_trailing tp trivia in
 			begin match token with
 			| (SEMICOLON,_,_) ->
 				begin match fetch_token tp with
 				| ((ELSE,_,_) as token2,trivia2) ->
+					let trivia2 = consume_trailing tp trivia2 in
 					let trivia2 = {trivia2 with tleading = (Leaf(token,{trivia with tflags = TFSkipped :: trivia.tflags}) :: trivia2.tleading)} in
 					token2,trivia2
 				| token2 ->
@@ -268,9 +269,10 @@ module TokenProvider = struct
 				end
 			| _ -> token,trivia
 			end
-		| Some token ->
+		| Some(token,trivia) ->
+			let trivia = consume_trailing tp trivia in
 			tp.inserted_token <- None;
-			token
+			token,trivia
 end
 
 open State
