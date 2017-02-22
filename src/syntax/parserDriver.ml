@@ -44,8 +44,8 @@ and tree =
 	| Leaf of token_info
 
 and trivia = {
-	tleading: tree list;
-	ttrailing: tree list;
+	tleading: placed_token list;
+	ttrailing: placed_token list;
 	tflags : trivia_flag list;
 }
 
@@ -87,8 +87,8 @@ let print_token (token,p1,p2) =
 	 Printf.sprintf "%s (%s - %s)" (s_token token) (print_position p1) (print_position p2)
 
 let rec print_trivia trivia =
-	let l = (match trivia.tleading with [] -> [] | _ -> ["leading",String.concat ", " (List.map (fun t -> print_tree "" t) trivia.tleading)]) @
-	(match trivia.ttrailing with [] -> [] | _ -> ["trailing",String.concat ", " (List.map (fun t -> print_tree "" t) trivia.ttrailing)]) in
+	let l = (match trivia.tleading with [] -> [] | _ -> ["leading",String.concat ", " (List.map (fun t -> print_token t) trivia.tleading)]) @
+	(match trivia.ttrailing with [] -> [] | _ -> ["trailing",String.concat ", " (List.map (fun t -> print_token t) trivia.ttrailing)]) in
 	String.concat ", " (List.map (fun (name,s) -> Printf.sprintf "%s: %s" name s) l)
 
 and print_tree tabs t = match t with
@@ -112,7 +112,7 @@ module TokenProvider = struct
 		mutable parse_string: string I.checkpoint -> string result;
 		token_cache: placed_token Queue.t;
 		mutable inserted_tokens : token_info list;
-		mutable leading: tree list;
+		mutable leading: placed_token list;
 		mutable branches : ((expr * bool) * bool) list;
 		mutable in_dead_branch : bool;
 	}
@@ -130,7 +130,7 @@ module TokenProvider = struct
 	}
 
 	let add_skipped tp (token,trivia) =
-		tp.leading <- Leaf(token,{trivia with tflags = TFSkipped :: trivia.tflags}) :: tp.leading
+		tp.leading <- token :: tp.leading
 
 	let insert_token tp token =
 		tp.inserted_tokens <- token :: tp.inserted_tokens
@@ -159,10 +159,10 @@ module TokenProvider = struct
 		let rec loop acc = match peek_token tp with
 			| ((WHITESPACE _ | COMMENT _ | COMMENTLINE _),_,_) as token ->
 				consume_token tp;
-				loop ((Leaf(token,create_trivia [])) :: acc)
+				loop (token :: acc)
 			| (NEWLINE _,_,_) as token ->
 				consume_token tp;
-				List.rev (Leaf(token,create_trivia []) :: acc)
+				List.rev (token :: acc)
 			| _ ->
 				List.rev acc
 		in
@@ -170,7 +170,7 @@ module TokenProvider = struct
 		   might have it populated already. In that case we should only read more
 		   trailing tokens if there wasn't any newline or physical token already. *)
 		if List.exists (function
-			| Leaf(((WHITESPACE _ | COMMENT _ | COMMENTLINE _),_,_),_) -> false
+			| ((WHITESPACE _ | COMMENT _ | COMMENTLINE _),_,_) -> false
 			| _ -> true
 		) trivia.ttrailing then
 			trivia
@@ -185,14 +185,18 @@ module TokenProvider = struct
 
 	and process_token tp (tk,p1,p2) : token_info =
 		let add_leading trivia =
-			tp.leading <- (Leaf (trivia,create_trivia [])) :: tp.leading
-		in
-		let merge_leading trivia =
-			tp.leading <- trivia.tleading @ tp.leading
+			tp.leading <- trivia :: tp.leading
 		in
 		let parse f checkpoint = match f checkpoint with
 			| Accept(x,tree) ->
-				merge_leading {tleading = tree; ttrailing = []; tflags = [] };
+				let rec convert_to_trivia tree = match tree with
+					| Node(_,tl) -> List.iter convert_to_trivia tl
+					| Leaf(token,trivia) ->
+						List.iter add_leading trivia.tleading;
+						add_leading token;
+						List.iter add_leading trivia.ttrailing;
+				in
+				List.iter convert_to_trivia tree;
 				x
 			| Reject _ -> raise Exit
 		in
@@ -272,7 +276,8 @@ module TokenProvider = struct
 				begin match fetch_token tp with
 				| ((ELSE,_,_) as token2,trivia2) ->
 					let trivia2 = consume_trailing tp trivia2 in
-					let trivia2 = {trivia2 with tleading = (Leaf(token,{trivia with tflags = TFSkipped :: trivia.tflags}) :: trivia2.tleading)} in
+					let leading = trivia.tleading @ [token] @ trivia.ttrailing @ trivia2.tleading in
+					let trivia2 = {trivia2 with tleading = leading} in
 					token2,trivia2
 				| token2 ->
 					insert_token tp token2;

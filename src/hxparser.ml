@@ -28,12 +28,12 @@ let to_haxe tree =
 	let rec loop = function
 	| Node(_,tl) -> List.iter loop tl
 	| Leaf((tk,_,_),trivia) ->
-		List.iter loop trivia.tleading;
+		List.iter (fun (tk,_,_) -> Buffer.add_string buf (Token.s_token tk)) trivia.tleading;
 		if not (List.exists (function TFImplicit | TFInserted -> true | TFSkipped -> false) trivia.tflags) then begin
 			if tk <> Parser.EOF then
 				Buffer.add_string buf (Token.s_token tk)
 		end;
-		List.iter loop trivia.ttrailing
+		List.iter (fun (tk,_,_) -> Buffer.add_string buf (Token.s_token tk)) trivia.ttrailing;
 	in
 	List.iter loop tree;
 	Buffer.contents buf

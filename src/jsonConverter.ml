@@ -16,23 +16,25 @@ module TreeToJson (Api : JsonApi) = struct
 		Api.jint p.pos_cnum
 
 	let rec to_json = function
-		| Leaf((token,p1,p2),trivia) ->
+		| Leaf(token,trivia) ->
 			let acc = ref [] in
+			let jtoken (tk,p1,p2) l =
+				("token",Api.jstring (Token.s_token tk)) :: ("start",pos_to_json p1) :: ("end",pos_to_json p2) :: l
+			in
 			begin match trivia.tleading with
 				| [] -> ()
-				| _ -> acc := ("leading",Api.jarray (List.map to_json trivia.tleading)) :: !acc
+				| _ -> acc := ("leading",Api.jarray (List.map (fun token -> Api.jobject (jtoken token [])) trivia.tleading)) :: !acc
 			end;
 			begin match trivia.ttrailing with
 				| [] -> ()
-				| _ -> acc := ("trailing",Api.jarray (List.map to_json trivia.ttrailing)) :: !acc
+				| _ -> acc := ("trailing",Api.jarray (List.map (fun token -> Api.jobject (jtoken token [])) trivia.ttrailing)) :: !acc
 			end;
 			List.iter (function
 				| TFSkipped -> acc := ("skipped",Api.jbool true) :: !acc
 				| TFImplicit -> acc := ("implicit",Api.jbool true) :: !acc
 				| TFInserted -> acc := ("inserted",Api.jbool true) :: !acc
 			) trivia.tflags;
-			let l = ("name",Api.jstring "token") :: ("token",Api.jstring (Token.s_token token)) :: ("start",pos_to_json p1) :: ("end",pos_to_json p2) ::
-				(match !acc with | [] -> [] | trivia -> ["trivia",Api.jobject trivia ]) in
+			let l = ("name",Api.jstring "token") :: jtoken token (match !acc with | [] -> [] | trivia -> ["trivia",Api.jobject trivia ]) in
 			Api.jobject l
 		| Node(_,[]) -> Api.jnull
 		| Node(name1,[Node(name2,sub)]) -> to_json (Node((if name1 = "" then name2 else name1 ^ " " ^ name2),sub))
