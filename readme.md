@@ -3,6 +3,7 @@
 * oasis (for compilation)
 * menhir
 * sedlex
+* js_of_ocaml (only for generating .js)
 
 ## Preparation
 
@@ -16,8 +17,12 @@ opam install menhir
 
 ```
 oasis setup
-make build install
+make build
 ```
+
+## JS compilation
+
+Run `sh configure --enable-js`, then compile as usual.
 
 ## Usage
 

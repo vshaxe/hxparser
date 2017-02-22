@@ -21,6 +21,17 @@ XOCamlbuildExtraArgs:
     -yaccflag --inspection
     -yaccflag --unused-tokens
     -yaccflag --explain
+    -ocamlopt ocamlopt.opt
+
+Flag js
+    Description: Generate hxparserjs.js using js_of_ocaml
+    Default: false
+
+PostBuildCommand:
+    cp _build/src/hxparser.native hxparser.exe
+
+if flag(js)
+    PostBuildCommand: cp _build/src/hxparser.native hxparser.exe & js_of_ocaml _build/src/hxparserjs.byte -o hxparserjs.js
 
 Executable "hxparser"
     Path: src
@@ -32,7 +43,10 @@ Executable "hxparserjs"
     Path: src
     MainIs: hxparserjs.ml
     CompiledObject: byte
-    BuildDepends: menhirLib,sedlex,haxe-syntax,unix,str,js_of_ocaml,js_of_ocaml.ppx
+    BuildDepends: menhirLib,sedlex,haxe-syntax,unix,str,js_of_ocaml
+    Build: false
+    if flag(js)
+        Build: true
 
 Library "haxe-context"
     Path: src/context

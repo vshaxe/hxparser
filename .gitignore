@@ -13,3 +13,5 @@ _tags
 ignore.txt
 setup.log
 /bin/*
+hxparser.exe
+hxparserjs.js
