@@ -302,7 +302,7 @@ let s_xsymbol x =
 		| N_field_expr -> "field_expr"
 		| N_block_expr -> "block_expr"
 		| N_metadata -> "metadata"
-		| N_expr -> "expr"
+		| N_expr -> ""
 		| N_dot_ident -> "dot_ident"
 		(* options *)
 		| N_option_package_ -> ""
