@@ -7,6 +7,18 @@ let make_is e (t,p_t) p p_is =
 	let e_is = EField((EConst(Ident "Std"),Pos.Range.null),"is"),p_is in
 	let e2 = expr_of_type_path (t.tpackage,t.tname) p_t in
 	ECall(e_is,[e;e2]),p
+
+let make_class annotation flags c p =
+	let (flags2,name,tl,rl,l) = c in
+	let def = {
+		d_name = (match name with None -> assert false (* syntax error... *) | Some name -> name);
+		d_doc = fst annotation;
+		d_params = tl;
+		d_meta = snd annotation;
+		d_flags = (List.map fst flags) @ flags2 @ rl;
+		d_data = l;
+	} in
+	(EClass def,p)
 %}
 
 (* Token definitions *)
@@ -59,6 +71,7 @@ let make_is e (t,p_t) p p_is =
 %start sharp_error_message
 %start sharp_line_number
 %start <Ast.class_field> class_field_only
+%start <Ast.type_decl> class_decl_only
 %type <string list option * Ast.type_decl list> file
 %type <Ast.expr> expr_only
 %type <Ast.expr> sharp_condition
@@ -533,18 +546,7 @@ class_decl:
 decl:
 	| annotations; IMPORT; import = import; SEMICOLON { import }
 	| annotations; USING; path = path_with_pos; SEMICOLON { EUsing path,mk $startpos $endpos }
-	| annotation = annotations; flags = common_flags*; c = class_decl {
-		let (flags2,name,tl,rl,l) = c in
-		let def = {
-			d_name = (match name with None -> $syntaxerror | Some name -> name);
-			d_doc = fst annotation;
-			d_params = tl;
-			d_meta = snd annotation;
-			d_flags = (List.map fst flags) @ flags2 @ rl;
-			d_data = l;
-		} in
-		(EClass def,mk $startpos $endpos)
-	}
+	| annotation = annotations; flags = common_flags*; c = class_decl { make_class annotation flags c (mk $startpos $endpos) }
 	| annotation = annotations; flags = common_flags*; ENUM; name = dollar_ident; tl = type_decl_parameters; BROPEN; l = enum_field*; BRCLOSE {
 		let def = {
 			d_name = (name,mk $startpos(name) $endpos(name));
@@ -618,3 +620,6 @@ expr_only:
 
 class_field_only:
 	| cff = class_field; EOF { cff }
+
+class_decl_only:
+	| c = class_decl; EOF { make_class (None,[]) [] c (mk $startpos $endpos) }
