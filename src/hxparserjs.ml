@@ -21,8 +21,6 @@ let config = {
 let parse filename entrypoint s =
 	let open Sedlex_menhir in
 	let report_error sl =
-		List.iter print_endline sl;
-		print_endline ("while parsing " ^ filename ^ "\n\n");
 		failwith "Failed"
 	in
 	let s = Js.to_string s in
