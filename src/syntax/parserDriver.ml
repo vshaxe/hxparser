@@ -49,6 +49,8 @@ and trivia = {
 	tflags : trivia_flag list;
 }
 
+type range = Lexing.position * Lexing.position
+
 let create_trivia flags = {
 	tleading = [];
 	ttrailing = [];
@@ -78,7 +80,7 @@ module State = struct
 end
 
 type 'a result =
-	| Accept of 'a * tree list
+	| Accept of 'a * tree list * range list
 	| Reject of string list * tree list
 
 let print_position = Pos.Position.print
@@ -113,8 +115,9 @@ module TokenProvider = struct
 		token_cache: placed_token Queue.t;
 		mutable inserted_tokens : token_info list;
 		mutable leading: placed_token list;
-		mutable branches : ((expr * bool) * bool) list;
+		mutable branches : ((expr * bool) * bool * Lexing.position) list;
 		mutable in_dead_branch : bool;
+		mutable blocks : range list;
 	}
 
 	let create lexbuf = {
@@ -127,6 +130,7 @@ module TokenProvider = struct
 		leading = [];
 		branches = [];
 		in_dead_branch = false;
+		blocks = [];
 	}
 
 	let add_skipped tp (token,trivia) =
@@ -188,7 +192,7 @@ module TokenProvider = struct
 			tp.leading <- trivia :: tp.leading
 		in
 		let parse f checkpoint = match f checkpoint with
-			| Accept(x,tree) ->
+			| Accept(x,tree,_) ->
 				let rec convert_to_trivia tree = match tree with
 					| Node(_,tl) -> List.iter convert_to_trivia tl
 					| Leaf(token,trivia) ->
@@ -221,24 +225,24 @@ module TokenProvider = struct
 			add_leading (tk,p1,p2);
 			(* We have to push _something_ on the stack so the #end can consume it. Parsing the
 			   condition could arrive at the #end immediately. *)
-			tp.branches <- (((EConst (Ident "false"),Pos.Range.null),true),true) :: tp.branches;
+			tp.branches <- (((EConst (Ident "false"),Pos.Range.null),true),true,p1) :: tp.branches;
 			fetch_token tp;
 		| SHARPIF ->
 			add_leading (tk,p1,p2);
 			let cond_checkpoint = Parser.Incremental.sharp_condition tp.lexbuf.pos in
 			let cond = parse tp.parse_expr cond_checkpoint in
-			tp.branches <- ((cond,tp.in_dead_branch),tp.in_dead_branch) :: tp.branches;
+			tp.branches <- ((cond,tp.in_dead_branch),tp.in_dead_branch,p1) :: tp.branches;
 			fetch_token tp;
 		| SHARPELSEIF ->
 			add_leading (tk,p1,p2);
 			begin match tp.branches with
-			| ((_,b1),b2) :: _ when not b1 || b2 ->
+			| ((_,b1),b2,_) :: _ when not b1 || b2 ->
 				tp.in_dead_branch <- true;
 				fetch_token tp
-			| ((cond2,dead_branch),dead) :: branches ->
+			| ((cond2,dead_branch),dead,p1) :: branches ->
 				let cond_checkpoint = Parser.Incremental.sharp_condition tp.lexbuf.pos in
 				let cond = parse tp.parse_expr cond_checkpoint in
-				tp.branches <- ((cond,false),dead) :: branches;
+				tp.branches <- ((cond,false),dead,p1) :: branches;
 				if dead || not dead_branch then tp.in_dead_branch <- true;
 				fetch_token tp
 			| [] -> assert false
@@ -246,8 +250,8 @@ module TokenProvider = struct
 		| SHARPELSE ->
 			add_leading (tk,p1,p2);
 			begin match tp.branches with
-			| ((cond,dead_branch),dead) :: branches ->
-				tp.branches <- ((not_expr cond,not dead_branch),dead) :: branches;
+			| ((cond,dead_branch),dead,p1) :: branches ->
+				tp.branches <- ((not_expr cond,not dead_branch),dead,p1) :: branches;
 				if dead || not dead_branch then tp.in_dead_branch <- true;
 				fetch_token tp
 			| [] -> assert false
@@ -255,7 +259,8 @@ module TokenProvider = struct
 		| SHARPEND ->
 			add_leading (tk,p1,p2);
 			begin match tp.branches with
-			| (_,dead) :: branches ->
+			| (_,dead,p1) :: branches ->
+				tp.blocks <- (p1,p2) :: tp.blocks;
 				tp.branches <- branches;
 				tp.in_dead_branch <- dead;
 				fetch_token tp
@@ -331,7 +336,7 @@ and loop : 'a . (Config.t * TokenProvider.t) -> 'a State.t -> 'a result =
 			else
 				print_endline "[ACCEPT]"
 		end;
-		Accept(v,state.tree)
+		Accept(v,state.tree,tp.TokenProvider.blocks)
 	| I.InputNeeded _ ->
 		input_needed (config,tp) state
 	| I.Shifting _ ->

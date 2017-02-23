@@ -1,6 +1,6 @@
 module type JsonApi = sig
 	type t
-	val jarray : t list -> t
+	val (* Ben & *) jarray : t list -> t
 	val jobject : (string * t) list -> t
 	val jbool : bool -> t
 	val jstring : string -> t
@@ -15,11 +15,14 @@ module TreeToJson (Api : JsonApi) = struct
 		let open Lexing in
 		Api.jint p.pos_cnum
 
+	let range_to_json p1 p2 l =
+		("start",pos_to_json p1) :: ("end",pos_to_json p2) :: l
+
 	let rec to_json = function
 		| Leaf(token,trivia) ->
 			let acc = ref [] in
 			let jtoken (tk,p1,p2) l =
-				("token",Api.jstring (Token.s_token tk)) :: ("start",pos_to_json p1) :: ("end",pos_to_json p2) :: l
+				("token",Api.jstring (Token.s_token tk)) :: range_to_json p1 p2 l
 			in
 			begin match trivia.tleading with
 				| [] -> ()
@@ -54,4 +57,12 @@ module TreeToJson (Api : JsonApi) = struct
 						let j = Api.jarray l in
 						(match name with "" -> j | _ -> Api.jobject ["name",Api.jstring name;"sub",j])
 			end
+
+	let convert tree blocks =
+		let tree = List.map to_json tree in
+		let tree = Api.jobject ["name",Api.jstring "tree";"sub",Api.jarray tree] in
+		let blocks = List.map (fun (p1,p2) -> Api.jobject (range_to_json p1 p2 [])) blocks in
+		let blocks = Api.jobject ["name",Api.jstring "blocks";"sub",Api.jarray blocks] in
+		let js = Api.jobject ["document",Api.jobject ["tree",tree;"blocks",blocks]] in
+		js
 end

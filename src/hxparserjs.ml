@@ -31,12 +31,9 @@ let parse filename s =
 		let _ = Lexer.skip_header lexbuf in
 		begin match run config lexbuf (Parser.Incremental.file lexbuf.pos) with
 			| Reject(sl,_) -> report_error sl
-			| Accept(_,tree) ->
-				let file = List.map (JsOfOcamlConverter.to_json) tree in
-				Js.Unsafe.inject (Js.Unsafe.obj [|
-					"name",Js.Unsafe.inject (Js.string "document");
-					"sub",Js.Unsafe.inject (Js.array (Array.of_list file));
-				|]);
+			| Accept(_,tree,blocks) ->
+				let js = JsOfOcamlConverter.convert tree blocks in
+				js
 		end;
 	with exc ->
 		report_error [Printexc.to_string exc];
