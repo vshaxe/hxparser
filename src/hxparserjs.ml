@@ -29,7 +29,7 @@ let parse filename entrypoint s =
 	let lexbuf = create_lexbuf ~file:filename (Sedlexing.Utf8.from_string s) in
 	begin try
 		let _ = Lexer.skip_header lexbuf in
-		begin match entrypoint with
+		begin match Js.to_string entrypoint with
 			| "file" ->
 				begin match run config lexbuf (Parser.Incremental.file lexbuf.pos) with
 				| Reject(sl,_) -> report_error sl
@@ -40,7 +40,7 @@ let parse filename entrypoint s =
 				| Reject(sl,_) -> report_error sl
 				| Accept(_,tree,blocks) -> JsOfOcamlConverter.convert tree blocks
 				end;
-			| _ -> failwith ("Unknown entry point: " ^ entrypoint)
+			| entrypoint -> failwith ("Unknown entry point: " ^ entrypoint)
 		end
 	with exc ->
 		report_error [Printexc.to_string exc];
