@@ -18,7 +18,7 @@ let config = {
 	recover = true;
 }
 
-let parse filename s =
+let parse filename entrypoint s =
 	let open Sedlex_menhir in
 	let report_error sl =
 		List.iter print_endline sl;
@@ -29,12 +29,19 @@ let parse filename s =
 	let lexbuf = create_lexbuf ~file:filename (Sedlexing.Utf8.from_string s) in
 	begin try
 		let _ = Lexer.skip_header lexbuf in
-		begin match run config lexbuf (Parser.Incremental.file lexbuf.pos) with
-			| Reject(sl,_) -> report_error sl
-			| Accept(_,tree,blocks) ->
-				let js = JsOfOcamlConverter.convert tree blocks in
-				js
-		end;
+		begin match entrypoint with
+			| "file" ->
+				begin match run config lexbuf (Parser.Incremental.file lexbuf.pos) with
+				| Reject(sl,_) -> report_error sl
+				| Accept(_,tree,blocks) -> JsOfOcamlConverter.convert tree blocks
+				end;
+			| "class_field" ->
+				begin match run config lexbuf (Parser.Incremental.class_field_only lexbuf.pos) with
+				| Reject(sl,_) -> report_error sl
+				| Accept(_,tree,blocks) -> JsOfOcamlConverter.convert tree blocks
+				end;
+			| _ -> failwith ("Unknown entry point: " ^ entrypoint)
+		end
 	with exc ->
 		report_error [Printexc.to_string exc];
 	end;

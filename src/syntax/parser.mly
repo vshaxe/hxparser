@@ -58,6 +58,7 @@ let make_is e (t,p_t) p p_is =
 %start sharp_condition
 %start sharp_error_message
 %start sharp_line_number
+%start <Ast.class_field> class_field_only
 %type <string list option * Ast.type_decl list> file
 %type <Ast.expr> expr_only
 %type <Ast.expr> sharp_condition
@@ -614,3 +615,6 @@ sharp_line_number:
 
 expr_only:
 	| expr = expr; EOF { expr }
+
+class_field_only:
+	| cff = class_field; EOF { cff }

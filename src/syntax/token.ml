@@ -304,6 +304,7 @@ let s_xsymbol x =
 		| N_metadata -> "metadata"
 		| N_expr -> ""
 		| N_dot_ident -> "dot_ident"
+		| N_class_field_only -> ""
 		(* options *)
 		| N_option_package_ -> ""
 		| N_option_type_hint_ -> ""
