@@ -460,13 +460,8 @@ expr:
 structural_extension:
 	| GT; tp = type_path; COMMA { tp }
 
-anonymous_type_field_next:
-	| { [] }
-	| COMMA; cff = anonymous_type_field { cff }
-
 anonymous_type_field:
-	| { [] }
-	| opt = QUESTIONMARK?; name = pos(dollar_ident); COLON; ct = complex_type; cffl = anonymous_type_field_next {
+	| opt = QUESTIONMARK?; name = pos(dollar_ident); COLON; ct = complex_type {
 		let cff = {
 			cff_name = name;
 			cff_meta = (match opt with None -> [] | Some _ -> [Meta.Optional,[],Pos.Range.null]);
@@ -475,12 +470,20 @@ anonymous_type_field:
 			cff_kind = FVar(Some ct,None);
 			cff_pos = mk $symbolstartpos $endpos;
 		} in
-		cff :: cffl
+		cff
 	}
+
+anonymous_type_fields_short_next:
+	| { [] }
+	| COMMA; fl = anonymous_type_fields_short { fl }
+
+anonymous_type_fields_short:
+	| { [] }
+	| f = anonymous_type_field; fl = anonymous_type_fields_short_next { f :: fl }
 
 anonymous_type_fields:
 	| l = class_field+ { l }
-	| l = anonymous_type_field { l }
+	| l = anonymous_type_fields_short { l }
 
 complex_type_parent:
 	| POPEN; ct = complex_type; PCLOSE { CTParent ct,mk $startpos $endpos }
