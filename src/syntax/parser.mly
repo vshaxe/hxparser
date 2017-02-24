@@ -525,7 +525,6 @@ type_decl_parameter:
 
 type_decl_parameters:
 	| LT; tl = separated_nonempty_list(COMMA,type_decl_parameter); GT { tl }
-	| { [] }
 
 import_mode:
 	| IN; ident = ident { IAsName ident }
@@ -541,7 +540,7 @@ class_or_interface:
 	| INTERFACE { [HInterface] }
 
 class_decl:
-	| flags = class_or_interface; name = pos(dollar_ident)?; tl = type_decl_parameters; rl = class_relations*; BROPEN; l = class_field*; BRCLOSE { flags,name,tl,rl,l }
+	| flags = class_or_interface; name = pos(dollar_ident)?; tl = loption(type_decl_parameters); rl = class_relations*; BROPEN; l = class_field*; BRCLOSE { flags,name,tl,rl,l }
 
 decl:
 	| annotations; IMPORT; import = import; SEMICOLON { import }

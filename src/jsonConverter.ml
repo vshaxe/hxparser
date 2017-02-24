@@ -41,6 +41,7 @@ module TreeToJson (Api : JsonApi) = struct
 			let l = ("name",Api.jstring "token") :: jtoken token (match !acc with | [] -> [] | trivia -> ["trivia",Api.jobject trivia ]) in
 			Api.jobject l
 		| Node(sym,[]) when (s_xsymbol sym = "?") -> Api.jnull
+		| Node(sym,[t1]) when (s_xsymbol sym = "?") -> to_json t1
 		| Node(sym,tl) ->
 			let name = s_xsymbol sym in
 			begin match List.rev tl with
