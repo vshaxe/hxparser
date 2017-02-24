@@ -306,7 +306,7 @@ let has_debug config flag = List.mem flag config.debug_flags
 
 let offer config state token trivia =
 	if has_debug config DOffer then begin
-		print_endline (Printf.sprintf "[OFFER ] %s" (print_token token));
+		prerr_endline (Printf.sprintf "[OFFER ] %s" (print_token token));
 	end;
 	let checkpoint = I.offer state.checkpoint token in
 	let state = {state with last_offer = (token,trivia); checkpoint = checkpoint; recover_state = state} in
@@ -322,9 +322,9 @@ and loop : 'a . (Config.t * TokenProvider.t) -> 'a State.t -> 'a result =
 	| I.Accepted v ->
 		if has_debug config DAccept then begin
 			if config.build_parse_tree then
-				print_endline (Printf.sprintf "[ACCEPT] %s" (print_tree_list state.tree))
+				prerr_endline (Printf.sprintf "[ACCEPT] %s" (print_tree_list state.tree))
 			else
-				print_endline "[ACCEPT]"
+				prerr_endline "[ACCEPT]"
 		end;
 		Accept(v,state.tree,tp.TokenProvider.blocks)
 	| I.InputNeeded _ ->
@@ -332,7 +332,7 @@ and loop : 'a . (Config.t * TokenProvider.t) -> 'a State.t -> 'a result =
 	| I.Shifting _ ->
 		let token = state.last_offer in
 		if has_debug config DShift then begin
-			let ((tk,_,_),_) = token in print_endline (Printf.sprintf "[SHIFT ] %s" (s_token tk));
+			let ((tk,_,_),_) = token in prerr_endline (Printf.sprintf "[SHIFT ] %s" (s_token tk));
 		end;
 		let state = {state with checkpoint = I.resume state.checkpoint; last_shift = token} in
 		let state =
@@ -343,7 +343,7 @@ and loop : 'a . (Config.t * TokenProvider.t) -> 'a State.t -> 'a result =
 	| I.AboutToReduce(_,production) ->
 		if has_debug config DReduce then begin match I.rhs production with
 			| [] -> ()
-			| rhs -> print_endline (Printf.sprintf "[REDUCE] %s <- %s" (s_xsymbol (I.lhs production)) (String.concat " " (List.map s_xsymbol rhs)));
+			| rhs -> prerr_endline (Printf.sprintf "[REDUCE] %s <- %s" (s_xsymbol (I.lhs production)) (String.concat " " (List.map s_xsymbol rhs)));
 		end;
 		let state = if config.build_parse_tree then begin
 			let l = List.length (I.rhs production) in
@@ -361,10 +361,10 @@ and loop : 'a . (Config.t * TokenProvider.t) -> 'a State.t -> 'a result =
 		let state = {state with checkpoint = I.resume state.checkpoint} in
 		loop (config,tp) state
 	| I.HandlingError env ->
-		(*print_endline (Printf.sprintf "[ERROR ] Token: %s, Last shift: %s" (print_token (fst state.last_offer)) (print_token (fst state.last_shift)));*)
+		(*prerr_endline (Printf.sprintf "[ERROR ] Token: %s, Last shift: %s" (print_token (fst state.last_offer)) (print_token (fst state.last_shift)));*)
 		let insert token allowed p =
 			if has_debug config DInsert then begin
-				print_endline (Printf.sprintf "[INSERT] %s" (s_token token));
+				prerr_endline (Printf.sprintf "[INSERT] %s" (s_token token));
 			end;
 			let last_offer = state.last_offer in
 			let state = offer config state.recover_state (token,p,p) (create_trivia [if allowed then TFImplicit else TFInserted]) in
@@ -396,7 +396,7 @@ and loop : 'a . (Config.t * TokenProvider.t) -> 'a State.t -> 'a result =
 					| _ -> None
 				in
 				begin match so with
-					| Some s -> print_endline s;
+					| Some s -> prerr_endline s;
 					| None -> ()
 				end;*)
 		end;
@@ -413,7 +413,7 @@ and loop : 'a . (Config.t * TokenProvider.t) -> 'a State.t -> 'a result =
 
 and start : 'a . (Config.t * TokenProvider.t) -> 'a I.checkpoint -> 'a result = fun (config,tp) checkpoint ->
 	if has_debug config DStart then begin
-		print_endline "[START ]"
+		prerr_endline "[START ]"
 	end;
 	let state = State.create checkpoint in
 	loop (config,tp) state

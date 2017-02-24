@@ -75,7 +75,7 @@ let rec preprocessor lexbuf =
 		let s1,s2 = regexp (Buffer.create 0) lexbuf in
 		WHITESPACE("~/" ^ s1 ^ "/" ^ s2)
 	| _ ->
-		print_endline (Printf.sprintf "Invalid token %s at %s" (lexeme lexbuf) (Pos.Position.print lexbuf.pos));
+		prerr_endline (Printf.sprintf "Invalid token %s at %s" (lexeme lexbuf) (Pos.Position.print lexbuf.pos));
 		assert false
 
 and token lexbuf =
@@ -210,7 +210,7 @@ and token lexbuf =
 	| "#error" -> update lexbuf; SHARPERROR
 	| "#line" -> update lexbuf; SHARPLINE
 	| _ ->
-		print_endline (Printf.sprintf "Invalid token %s at %s" (lexeme lexbuf) (Pos.Position.print lexbuf.pos));
+		prerr_endline (Printf.sprintf "Invalid token %s at %s" (lexeme lexbuf) (Pos.Position.print lexbuf.pos));
 		assert false
 
 and string buffer lexbuf =

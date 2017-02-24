@@ -57,8 +57,8 @@ let parse filename =
 			open_in_bin filename
 		in
 	let report_error sl =
-		List.iter print_endline sl;
-		print_endline ("while parsing " ^ filename ^ "\n\n");
+		List.iter prerr_endline sl;
+		prerr_endline ("while parsing " ^ filename ^ "\n\n");
 		incr num_errors;
 		if !quit_early then begin
 			close_in ch;
@@ -74,7 +74,7 @@ let parse filename =
 				let js = JSONConverter.convert tree blocks in
 				let buffer = Buffer.create 0 in
 				write_json (Buffer.add_string buffer) js;
-				prerr_endline (Buffer.contents buffer);
+				print_endline (Buffer.contents buffer);
 		in
 		begin match run config lexbuf (Parser.Incremental.file lexbuf.pos) with
 			| Reject(sl,tree) ->
@@ -94,7 +94,7 @@ let parse filename =
 						let ch = open_out_bin "file_expected.txt" in
 						output_bytes ch (filename ^ "\n" ^ s2);
 						close_out ch;
-						print_endline (filename ^ " differs!");
+						prerr_endline (filename ^ " differs!");
 						exit 1;
 					end
 				end;
@@ -223,15 +223,15 @@ else begin
 		if s = stdin_filename then
 			parse s
 		else if not (Sys.file_exists s) then
-			print_endline ("No such file or directory: " ^ s)
+			prerr_endline ("No such file or directory: " ^ s)
 		else begin
 			if Sys.is_directory s then begin
-				print_endline ("Reading directory " ^ s);
+				prerr_endline ("Reading directory " ^ s);
 				explore_class_paths (s ^ "/")
 			end
 				else parse s
 		end
 	) !paths;
-	print_endline (Printf.sprintf "Parsed %i files, %i failed" !num_files !num_errors);
-	print_endline (string_of_float (Sys.time () -. now) ^ "s");
+	prerr_endline (Printf.sprintf "Parsed %i files, %i failed" !num_files !num_errors);
+	prerr_endline (string_of_float (Sys.time () -. now) ^ "s");
 end
