@@ -274,13 +274,10 @@ block_element:
 	| e = expr_open; SEMICOLON { e }
 	| e = expr_closed; SEMICOLON { e }
 
-block_expr:
-	| BROPEN; BRCLOSE { EBlock [],mk $startpos $endpos }
-	| BROPEN; el = nonempty_list(block_element); BRCLOSE { EBlock el,mk $startpos $endpos }
 
 field_expr:
 	| SEMICOLON { None }
-	| e = block_expr { Some e }
+	| e = expr_block { Some e }
 	| e = expr; SEMICOLON { Some e }
 
 keyword_ident:
@@ -289,49 +286,131 @@ keyword_ident:
 	| FALSE { EConst (Ident "false"),mk $startpos $endpos }
 	| NULL { EConst (Ident "null"),mk $startpos $endpos }
 
-%inline expr_var:
+expr_block:
+	| BROPEN; BRCLOSE { EBlock [],mk $startpos $endpos }
+	| BROPEN; el = nonempty_list(block_element); BRCLOSE { EBlock el,mk $startpos $endpos }
+
+expr_var:
 	| VAR; v = var_declaration { EVars([v]),mk $startpos $endpos }
 
-expr_closed:
+expr_metadata:
 	| m = metadata; e1 = expr_inline %prec LOWEST { EMeta(m,e1),mk $startpos $endpos }
-	| MACRO; e = macro_expr { e }
-	| e = block_expr { e }
+
+expr_throw:
 	| THROW; e1 = expr_inline { EThrow e1,mk $startpos $endpos }
+
+expr_if:
 	| IF; POPEN; e1 = expr; PCLOSE; e2 = expr_inline; eo = lpoption(else_expr) { EIf(e1,e2,eo),mk $startpos $endpos }
+
+expr_return:
 	| RETURN { EReturn None,mk $startpos $endpos }
+
+expr_return_value:
 	| RETURN; e = expr_inline { EReturn (Some e),mk $startpos $endpos }
+
+expr_break:
 	| BREAK { EBreak,mk $startpos $endpos }
+
+expr_continue:
 	| CONTINUE { EContinue,mk $startpos $endpos }
+
+expr_do:
 	| DO; e1 = expr; WHILE; POPEN; e2 = expr; PCLOSE { EWhile(e2,e1,DoWhile),mk $startpos $endpos }
+
+expr_try:
 	| TRY; e1 = expr_inline; catches = lplist(catch); { ETry(e1,catches),mk $startpos $endpos }
+
+expr_switch:
 	| SWITCH; e1 = expr; BROPEN; cases = case*; BRCLOSE { ESwitch(e1,cases,None),mk $startpos $endpos }
+
+expr_for:
 	| FOR; POPEN; e1 = expr; PCLOSE; e2 = expr_inline %prec LOWEST { EFor(e1,e2),mk $startpos $endpos }
+
+expr_while:
 	| WHILE; POPEN; e1 = expr; PCLOSE; e2 = expr_inline %prec LOWEST { EWhile(e1,e2,NormalWhile),mk $startpos $endpos }
+
+expr_untyped:
 	| UNTYPED; e1 = expr_inline { EUntyped e1,mk $startpos $endpos }
 
-expr_open:
+expr_object_declaration:
 	| BROPEN; f = object_field; fl = object_fields_next BRCLOSE { EObjectDecl (f :: fl),mk $startpos $endpos }
-	| const = const { EConst const,mk $startpos $endpos }
-	| e1 = keyword_ident { e1 }
+
+expr_unsafe_cast:
 	| CAST; e1 = expr_inline { ECast(e1,None),mk $startpos $endpos }
+
+expr_safe_cast:
 	| CAST; POPEN; e1 = expr; COMMA; ct = complex_type; PCLOSE { ECast(e1,Some ct),mk $startpos $endpos }
+
+expr_new:
 	| NEW; tp = type_path; el = call_args { ENew(tp,el),mk $startpos $endpos }
+
+expr_parenthesis:
 	| POPEN; e1 = expr; PCLOSE { EParenthesis e1,mk $startpos $endpos }
+
+expr_typecheck:
 	| POPEN; e1 = expr; COLON; ct = complex_type; PCLOSE { ECheckType(e1,ct),mk $startpos $endpos }
+
+expr_is:
 	| POPEN; e1 = expr; is = pos(IS); tp = type_path; PCLOSE { make_is e1 tp (snd is) (mk $startpos $endpos) }
+
+expr_array_declaration:
 	| BKOPEN; el = array_elements; BKCLOSE { EArrayDecl el,mk $startpos $endpos }
+
+expr_function:
 	| FUNCTION; f = func { EFunction(fst f,snd f),mk $startpos $endpos }
+
+expr_unary_prefix:
 	| op = unary_prefix; e1 = expr_inline { EUnop(op,Prefix,e1),mk $startpos $endpos }
+
+expr_field:
 	| e1 = expr_open; name = dot_ident { EField(e1,name),mk $startpos $endpos }
+
+expr_call:
 	| e1 = expr_open; el = call_args { ECall(e1,el),mk $startpos $endpos }
+
+expr_array_access:
 	| e1 = expr_open; BKOPEN; e2 = expr; BKCLOSE { EArray(e1,e2),mk $startpos $endpos }
+
+expr_binop:
 	| e1 = expr_open; op = op; e2 = expr_inline { EBinop(op,e1,e2),mk $startpos $endpos }
+
+expr_unary_postfix:
 	| e1 = expr_open; op = unary_postfix { EUnop(op,Postfix,e1),mk $startpos $endpos }
+
+expr_ternary:
 	| e1 = expr_open; QUESTIONMARK; e2 = expr; COLON; e3 = expr_inline { ETernary(e1,e2,e3),mk $startpos $endpos }
+
+expr_in:
 	| e1 = expr_open; IN; e2 = expr_inline { EIn(e1,e2),mk $startpos $endpos }
+
+expr_dotint:
 	| s = INT; DOT { EConst(Float (s ^ ".")),mk $startpos $endpos }
+
+expr_dollarident:
 	| s = DOLLAR_IDENT %prec LOWEST { EConst(Ident s),mk $startpos $endpos }
+
+expr_macro_escape:
 	| s = pos(DOLLAR_IDENT); BROPEN; e1 = expr; BRCLOSE { EMeta(((Meta.Custom (fst s)),[],snd s),e1),mk $startpos $endpos }
+
+expr_macro:
+	| MACRO; e = macro_expr { e }
+
+expr_const:
+	| const = const { EConst const,mk $startpos $endpos }
+
+expr_keyword_ident:
+	| e1 = keyword_ident { e1 }
+
+expr_closed:
+	| expr_metadata | expr_macro | expr_block | expr_throw | expr_if | expr_return | expr_return_value | expr_break | expr_continue
+	| expr_do | expr_try | expr_switch | expr_for | expr_while | expr_untyped { $1 }
+
+expr_open:
+	| expr_object_declaration | expr_unsafe_cast | expr_safe_cast | expr_new | expr_parenthesis
+	| expr_typecheck | expr_is | expr_array_declaration | expr_function | expr_unary_prefix
+	| expr_field | expr_call | expr_array_access | expr_binop | expr_unary_postfix
+	| expr_ternary | expr_in | expr_dotint | expr_dollarident | expr_macro_escape
+	| expr_const | expr_keyword_ident { $1 }
 
 %inline expr_inline:
 	| e = expr_closed | e = expr_open | e = expr_var { e }
