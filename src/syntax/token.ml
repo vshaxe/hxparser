@@ -322,7 +322,6 @@ let s_xsymbol x =
 		| N_loption_path_ -> "?"
 		| N_loption_separated_nonempty_list_COMMA_expr__ -> "?"
 		| N_loption_separated_nonempty_list_COMMA_function_argument__ -> "?"
-		| N_loption_type_decl_parameters_ -> "?"
 		(* lists *)
 		| N_path_with_pos -> "path"
 		| N_array_elements -> "elements"
