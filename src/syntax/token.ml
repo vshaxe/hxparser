@@ -345,7 +345,7 @@ let s_xsymbol x =
 		| N_list_abstract_relations_ -> "relations"
 		| N_list_decl_ -> "decls"
 		| N_list_class_field_ -> "fields"
-		| N_list_metadata_ -> "metadata"
+		| N_list_metadata_ -> "metadatas"
 		| N_list_class_relations_ -> "relations"
 		| N_nonempty_list_structural_extension_ -> "extensions"
 		| N_nonempty_list_block_element_ -> "elements"
