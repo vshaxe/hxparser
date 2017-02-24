@@ -270,19 +270,27 @@ object_fields:
 	| %prec LOWEST { [] }
 	| f = object_field; fl = object_fields_next { f :: fl }
 
-macro_expr:
+macro_expr_type_hint:
 	| type_hint { EConst(Ident "null"),mk $startpos $endpos }
+
+macro_expr_var:
 	| VAR; var_declarations { EConst(Ident "null"),mk $startpos $endpos }
+
+macro_expr_class_decl:
 	| class_decl2 { EConst(Ident "null"),mk $startpos $endpos }
+
+macro_expr_expr:
 	| expr_open %prec MACRO { EConst(Ident "null"),mk $startpos $endpos }
 	| expr_closed { EConst(Ident "null"),mk $startpos $endpos }
+
+macro_expr:
+	| macro_expr_type_hint | macro_expr_var | macro_expr_class_decl | macro_expr_expr { $1 }
 
 block_element:
 	| VAR; vl = var_declarations; SEMICOLON { EVars(vl),mk $startpos $endpos }
 	| INLINE; FUNCTION; f = func; SEMICOLON { EFunction(fst f,snd f),mk $startpos $endpos }
 	| e = expr_open; SEMICOLON { e }
 	| e = expr_closed; SEMICOLON { e }
-
 
 field_expr:
 	| SEMICOLON { None }
@@ -454,12 +462,22 @@ anonymous_type_fields:
 	| l = class_field+ { l }
 	| l = anonymous_type_field { l }
 
-complex_type:
+complex_type_parent:
 	| POPEN; ct = complex_type; PCLOSE { CTParent ct,mk $startpos $endpos }
+
+complex_type_extension:
 	| BROPEN; l = structural_extension+; cffl = anonymous_type_fields; BRCLOSE { CTExtend(l,cffl),mk $startpos $endpos }
+
+complex_type_anonymous:
 	| BROPEN; l = anonymous_type_fields; BRCLOSE { CTAnonymous l,mk $startpos $endpos }
+
+complex_type_optional:
 	| QUESTIONMARK; ct = complex_type; { CTOptional ct,mk $startpos $endpos }
+
+complex_type_path:
 	| tp = type_path { CTPath (fst tp),snd tp }
+
+complex_type_function:
 	| ct1 = complex_type; ARROW; ct2 = complex_type {
 		match fst ct2 with
 		| CTFunction (args,r) ->
@@ -467,6 +485,10 @@ complex_type:
 		| _ ->
 			CTFunction ([ct1],ct2),mk $startpos $endpos
 	}
+
+complex_type:
+	| complex_type_parent | complex_type_extension | complex_type_anonymous | complex_type_optional
+	| complex_type_path | complex_type_function { $1 }
 
 type_path_parameter:
 	| BKOPEN; el = array_elements; BKCLOSE { TPExpr(EArrayDecl el,mk $startpos $endpos) }
