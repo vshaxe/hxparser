@@ -183,11 +183,20 @@ path_with_pos:
 string:
 	| s = STRING | s = STRING2 { s }
 
-literal:
+literal_string:
 	| s = string { String s }
+
+literal_int:
 	| s = INT %prec NONDOT { Int s }
+
+literal_float:
 	| s = FLOAT { Float s }
+
+literal_regex:
 	| s = REGEX { Regexp(fst s,snd s) }
+
+literal:
+	| literal_string | literal_int | literal_float | literal_regex { $1 }
 
 const:
 	| s = ident { Ident s }
