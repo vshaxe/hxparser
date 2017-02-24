@@ -374,11 +374,10 @@ and loop : 'a . (Config.t * TokenProvider.t) -> 'a State.t -> 'a result =
 		let fail () =
 			loop (config,tp) {state with checkpoint = I.resume state.checkpoint}
 		in
-		let p = tp.TokenProvider.lexbuf.pos in
 		begin match state.last_shift with
-			| ((BRCLOSE,_,_),trivia) when not (was_inserted trivia) && acceptable SEMICOLON p -> insert SEMICOLON true p
+			| ((BRCLOSE,_,p),trivia) when not (was_inserted trivia) && acceptable SEMICOLON p -> insert SEMICOLON true p
 			| _ when not config.recover -> fail()
-			| _ ->
+			| ((_,_,p),_) ->
 				if acceptable SEMICOLON p then insert SEMICOLON false p
 				else if acceptable PCLOSE p then insert PCLOSE false p
 				else if acceptable BRCLOSE p then insert BRCLOSE false p
