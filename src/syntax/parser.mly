@@ -11,7 +11,7 @@ let make_is e (t,p_t) p p_is =
 let make_class annotation flags c p =
 	let (flags2,name,tl,rl,l) = c in
 	let def = {
-		d_name = (match name with None -> assert false (* syntax error... *) | Some name -> name);
+		d_name = (match name with None -> "",p (* TODO: syntax error... *) | Some name -> name);
 		d_doc = fst annotation;
 		d_params = tl;
 		d_meta = snd annotation;
@@ -35,8 +35,9 @@ let make_class annotation flags c p =
 %token <string> IDENT DOLLAR_IDENT DOT_IDENT STRING STRING2 INT FLOAT METADATA METADATA_OPEN COMMENT
 %token <string * string> REGEX
 (* Comment these out if you generate messages, they are unused. *)
-%token <string> COMMENTLINE WHITESPACE NEWLINE
+%token <string> COMMENTLINE WHITESPACE NEWLINE NONSENSE
 %token SHARPIF SHARPELSE SHARPELSEIF SHARPEND SHARPERROR SHARPLINE
+%token <token> UNCLOSED
 
 (* Precedence *)
 
@@ -162,7 +163,7 @@ path_with_pos:
 	| ASSIGNBOOLAND { OpAssignOp(OpBoolAnd) }
 	| GT; ASSIGN { OpAssignOp(OpGt) }
 	| GT; GT; ASSIGN { OpAssignOp(OpShr) }
-	| GT; GT { if $endpos($1) <> $startpos($2) then $syntaxerror; OpShr }
+	| GT; GT { OpShr } (* TODO: make this fail for > > somehow *)
 	| GT; GT; GT; ASSIGN { OpAssignOp(OpUShr) }
 	| GT; GT; GT { OpUShr }
 

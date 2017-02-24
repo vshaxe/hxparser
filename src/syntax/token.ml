@@ -1,6 +1,6 @@
 open Parser
 
-let s_token tk = match tk with
+let rec s_token tk = match tk with
 	| COLON -> ":"
 	| SEMICOLON -> ";"
 	| COMMA -> ","
@@ -115,6 +115,8 @@ let s_token tk = match tk with
 	| EOF -> "<eof>"
 	| WHITESPACE s -> s
 	| NEWLINE s -> s
+	| NONSENSE s -> s
+	| UNCLOSED tok -> s_token tok
 
 let s_xsymbol x =
 	let open MenhirInterpreter in
@@ -235,7 +237,9 @@ let s_xsymbol x =
 		| T_TO -> "to"
 		| T_AS -> "as"
 		| T_IS -> "is"
+		| T_NONSENSE -> "#nonsense"
 		| T_error -> "#error"
+		| T_UNCLOSED -> "#unclosed"
 		end
 	| X (N x) ->
 		begin match x with

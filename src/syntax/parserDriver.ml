@@ -162,7 +162,7 @@ module TokenProvider = struct
 
 	let consume_trailing tp trivia =
 		let rec loop acc = match peek_token tp with
-			| ((WHITESPACE _ | COMMENT _ | COMMENTLINE _),_,_) as token ->
+			| ((WHITESPACE _ | COMMENT _ | COMMENTLINE _ | NONSENSE _),_,_) as token ->
 				consume_token tp;
 				loop (token :: acc)
 			| (NEWLINE _,_,_) as token ->
@@ -175,7 +175,7 @@ module TokenProvider = struct
 		   might have it populated already. In that case we should only read more
 		   trailing tokens if there wasn't any newline or physical token already. *)
 		if List.exists (function
-			| ((WHITESPACE _ | COMMENT _ | COMMENTLINE _),_,_) -> false
+			| ((WHITESPACE _ | COMMENT _ | COMMENTLINE _ | NONSENSE _),_,_) -> false
 			| _ -> true
 		) trivia.ttrailing then
 			trivia
@@ -207,7 +207,7 @@ module TokenProvider = struct
 		in
 		let not_expr e = EUnop(Not,Prefix,e),snd e in
 		match tk with
-		| (WHITESPACE _ | NEWLINE _ | COMMENTLINE _ | COMMENT _) ->
+		| (WHITESPACE _ | NEWLINE _ | COMMENTLINE _ | COMMENT _ | NONSENSE _) ->
 			add_leading (tk,p1,p2);
 			fetch_token tp
 		| SHARPERROR ->

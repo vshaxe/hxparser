@@ -17,6 +17,8 @@
 open Sedlex_menhir
 open Parser
 
+exception Unclosed of string
+
 let ident_lc = [%sedlex.regexp?
 	(
 		Star '_',
@@ -67,16 +69,15 @@ let rec preprocessor lexbuf =
 	| Plus (Compl ('#' | '\n' | '\r' | '/' | '"' | '~' | '\'')) -> update lexbuf; WHITESPACE (lexeme lexbuf)
 	| "//", Star (Compl ('\n' | '\r')) -> update lexbuf; WHITESPACE (lexeme lexbuf)
 	| '/' | '#' | '~' -> update lexbuf; WHITESPACE (lexeme lexbuf)
-	| "\"" -> update lexbuf; WHITESPACE("\"" ^ string (Buffer.create 0) lexbuf ^ "\"")
-	| "\'" -> update lexbuf; WHITESPACE("'" ^ string2 (Buffer.create 0) lexbuf ^ "'")
-	| "/*" -> update lexbuf; WHITESPACE("/*" ^ comment (Buffer.create 0) lexbuf ^ "*/")
+	| "\"" -> update lexbuf; WHITESPACE("\"" ^ (try string (Buffer.create 0) lexbuf with Unclosed s -> s) ^ "\"")
+	| "\'" -> update lexbuf; WHITESPACE("'" ^ (try string2 (Buffer.create 0) lexbuf with Unclosed s -> s) ^ "'")
+	| "/*" -> update lexbuf; WHITESPACE("/*" ^ (try comment (Buffer.create 0) lexbuf with Unclosed s -> s) ^ "*/")
 	| "~/" ->
 		update lexbuf;
-		let s1,s2 = regexp (Buffer.create 0) lexbuf in
+		let s1,s2 = try regexp (Buffer.create 0) lexbuf with Unclosed s -> s,"" in
 		WHITESPACE("~/" ^ s1 ^ "/" ^ s2)
-	| _ ->
-		prerr_endline (Printf.sprintf "Invalid token %s at %s" (lexeme lexbuf) (Pos.Position.print lexbuf.pos));
-		assert false
+	| any -> update lexbuf; NONSENSE (lexeme lexbuf)
+	| _ -> assert false
 
 and token lexbuf =
 	let buf = lexbuf.stream in
@@ -193,10 +194,10 @@ and token lexbuf =
 	| "*" -> update lexbuf; STAR
 	| "/" -> update lexbuf; SLASH
 	(* sequences *)
-	| "\"" -> STRING (string (Buffer.create 0) lexbuf)
-	| "\'" -> STRING2 (string2 (Buffer.create 0) lexbuf)
-	| "/*" -> COMMENT (comment (Buffer.create 0) lexbuf)
-	| "~/" -> REGEX (regexp (Buffer.create 0) lexbuf)
+	| "\"" -> (try STRING (string (Buffer.create 0) lexbuf) with Unclosed s -> UNCLOSED (STRING s));
+	| "\'" -> (try STRING2 (string2 (Buffer.create 0) lexbuf) with Unclosed s -> UNCLOSED (STRING2 s));
+	| "/*" -> (try COMMENT (comment (Buffer.create 0) lexbuf) with Unclosed s -> UNCLOSED (COMMENT s));
+	| "~/" -> (try REGEX (regexp (Buffer.create 0) lexbuf) with Unclosed s -> REGEX(s,""))
 	| '@',metadata_ident -> update lexbuf; METADATA (skip1 (lexeme lexbuf))
 	| '@',metadata_ident,"(" -> update lexbuf; METADATA_OPEN (let s = lexeme lexbuf in String.sub s 1 (String.length s - 2))
 	| ident -> update lexbuf; IDENT (lexeme lexbuf)
@@ -209,15 +210,14 @@ and token lexbuf =
 	| "#end" -> update lexbuf; SHARPEND
 	| "#error" -> update lexbuf; SHARPERROR
 	| "#line" -> update lexbuf; SHARPLINE
-	| _ ->
-		prerr_endline (Printf.sprintf "Invalid token %s at %s" (lexeme lexbuf) (Pos.Position.print lexbuf.pos));
-		assert false
+	| any -> update lexbuf; NONSENSE (lexeme lexbuf)
+	| _ -> assert false (* should not happen *)
 
 and string buffer lexbuf =
 	let store () = Buffer.add_string buffer (lexeme lexbuf) in
 	let buf = lexbuf.stream in
 	match%sedlex buf with
-	| eof -> raise Exit
+	| eof -> raise (Unclosed (Buffer.contents buffer));
 	| '\n' | '\r' | "\r\n" -> new_line lexbuf; store(); string buffer lexbuf
 	| "\\\"" -> store(); string buffer lexbuf
 	| "\\\\" -> store(); string buffer lexbuf
