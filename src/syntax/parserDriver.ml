@@ -40,7 +40,7 @@ type placed_token = (token * Lexing.position * Lexing.position)
 type token_info = placed_token * trivia
 
 and tree =
-	| Node of string * tree list
+	| Node of I.xsymbol * tree list
 	| Leaf of token_info
 
 and trivia = {
@@ -96,10 +96,11 @@ let rec print_trivia trivia =
 and print_tree tabs t = match t with
 	| Leaf(token,trivia) -> Printf.sprintf "%s [%s]" (print_token token) (print_trivia trivia)
 	| Node(_,[]) -> ""
-	| Node(name,[t1]) -> (match name with "" -> "" | _ -> name ^ ": ") ^ (print_tree tabs t1)
-	| Node(name,tl) ->
+	| Node(sym,[t1]) -> let name = s_xsymbol sym in (match name with "" -> "" | _ -> name ^ ": ") ^ (print_tree tabs t1)
+	| Node(sym,tl) ->
+		let name = s_xsymbol sym in
 		begin match List.rev tl with
-			| Node(name2, tl2) :: tl when name = name2 -> print_tree tabs (Node(name,(List.rev tl) @ tl2))
+			| Node(sym2, tl2) :: tl when name = (s_xsymbol sym2) -> print_tree tabs (Node(sym,(List.rev tl) @ tl2))
 			| _ -> Printf.sprintf "%s%s" (match name with "" -> "" | _ -> name ^ ":") (String.concat "" (List.map (fun t -> match print_tree (tabs ^ "  ") t with "" -> "" | s -> "\n" ^ tabs ^ s) tl))
 		end
 
@@ -301,19 +302,6 @@ open Config
 
 let has_debug config flag = List.mem flag config.debug_flags
 
-let rec print_tree tabs t = match t with
-	| Leaf(token,trivia) -> print_token token
-	| Node(_,[]) -> ""
-	| Node(name,[t1]) -> (match name with "" -> "" | _ -> name ^ ": ") ^ (print_tree tabs t1)
-	| Node(name,tl) ->
-		begin match List.rev tl with
-			| Node(name2, tl2) :: tl when name = name2 -> print_tree tabs (Node(name,(List.rev tl) @ tl2))
-			| _ -> Printf.sprintf "%s%s" (match name with "" -> "" | _ -> name ^ ":") (String.concat "" (List.map (fun t -> match print_tree (tabs ^ "  ") t with "" -> "" | s -> "\n" ^ tabs ^ s) tl))
-		end
-
-let print_tree_list tree =
-	String.concat "\n" (List.map (fun t -> print_tree "" t) tree)
-
 let offer config state token trivia =
 	if has_debug config DOffer then begin
 		print_endline (Printf.sprintf "[OFFER ] %s" (print_token token));
@@ -364,7 +352,7 @@ and loop : 'a . (Config.t * TokenProvider.t) -> 'a State.t -> 'a result =
 					| [] -> assert false
 			in
 			let nodes1,nodes2 = loop 0 [] state.tree in
-			{state with tree = ((Node(s_xsymbol (I.lhs production),nodes1)) :: nodes2)}
+			{state with tree = ((Node((I.lhs production),nodes1)) :: nodes2)}
 		end else
 			state
 		in

@@ -10,6 +10,7 @@ end
 
 module TreeToJson (Api : JsonApi) = struct
 	open ParserDriver
+	open Token
 
 	let pos_to_json p =
 		let open Lexing in
@@ -40,14 +41,15 @@ module TreeToJson (Api : JsonApi) = struct
 			let l = ("name",Api.jstring "token") :: jtoken token (match !acc with | [] -> [] | trivia -> ["trivia",Api.jobject trivia ]) in
 			Api.jobject l
 		| Node(_,[]) -> Api.jnull
-		| Node(name1,[Node(name2,sub)]) -> to_json (Node((if name1 = "" then name2 else name1 ^ " " ^ name2),sub))
-		| Node(name,[t1]) ->
+		| Node(sym,[t1]) ->
+			let name = s_xsymbol sym in
 			let j = to_json t1 in
 			if j = Api.jnull then Api.jnull
 			else (match name with "" -> j | _ -> Api.jobject["name",Api.jstring name;"sub",Api.jarray [j]])
-		| Node(name,tl) ->
+		| Node(sym,tl) ->
+			let name = s_xsymbol sym in
 			begin match List.rev tl with
-				| Node(name2, tl2) :: tl when name = name2 -> to_json (Node(name,(List.rev tl) @ tl2))
+				| Node(sym2, tl2) :: tl when name = (s_xsymbol sym2) -> to_json (Node(sym,(List.rev tl) @ tl2))
 				| _ ->
 					let l = List.map to_json tl in
 					let l = List.filter (fun j -> j <> Api.jnull) l in
