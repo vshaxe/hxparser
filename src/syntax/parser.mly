@@ -42,7 +42,7 @@ let make_class annotation flags c p =
 
 %nonassoc LOWEST
 %left COMMA
-%right CAST UNTYPED RETURN THROW MACRO
+%right RETURN MACRO
 %left CATCH ELSE WHILE IF
 %left IN IS
 %right ASSIGN ASSIGNMOD ASSIGNAND ASSIGNOR ASSIGNXOR ASSIGNPLUS ASSIGNMINUS ASSIGNSTAR ASSIGNSLASH ASSIGNSHL ASSIGNBOOLOR ASSIGNBOOLAND
@@ -60,7 +60,7 @@ let make_class annotation flags c p =
 %left ARROW
 %right QUESTIONMARK
 %right POPEN BKOPEN BROPEN
-%nonassoc NONDOT
+%nonassoc NONDOT BRCLOSE
 %left DOT_IDENT COLON DOT
 
 (* Start and types *)
@@ -193,13 +193,6 @@ const:
 	| s = ident { Ident s }
 	| s = literal { s }
 
-object_field_name:
-	| name = dollar_ident { name }
-	| name = string { name }
-
-object_field:
-	| name = object_field_name; COLON; e = expr { ((name,mk $startpos(name) $endpos(name)),e) }
-
 call_args:
 	| POPEN; el = separated_list(COMMA, expr); PCLOSE { el }
 
@@ -220,7 +213,7 @@ else_expr:
 	| ELSE; e1 = expr { e1 }
 
 catch:
-	| CATCH; POPEN; name = pos(dollar_ident); ct = type_hint; PCLOSE; e1 = expr %prec LOWEST { (name,ct,e1,mk $startpos $endpos) }
+	| CATCH; POPEN; name = pos(dollar_ident); ct = type_hint; PCLOSE; e1 = expr { (name,ct,e1,mk $startpos $endpos) }
 
 guard:
 	| IF; POPEN; e1 = expr; PCLOSE { e1 }
@@ -235,7 +228,7 @@ case:
 	}
 
 func:
-	| name = dollar_ident?; tl = type_decl_parameters; POPEN; el = separated_list(COMMA,function_argument); PCLOSE; ct = type_hint?; e1 = expr %prec LOWEST {
+	| name = dollar_ident?; tl = type_decl_parameters; POPEN; el = separated_list(COMMA,function_argument); PCLOSE; ct = type_hint?; e1 = expr {
 		let f = {
 			f_params = tl;
 			f_type = ct;
@@ -253,12 +246,19 @@ array_elements:
 	| { [] }
 	| e1 = expr; el = array_elements_next { e1 :: el }
 
+object_field_name:
+	| name = dollar_ident { name }
+	| name = string { name }
+
+object_field:
+	| name = object_field_name; COLON; e = expr { ((name,mk $startpos(name) $endpos(name)),e) }
+
 object_fields_next:
 	| { [] }
-	| COMMA; el = object_fields { el }
+	| COMMA; fl = object_fields { fl }
 
 object_fields:
-	| { [] }
+	| %prec LOWEST { [] }
 	| f = object_field; fl = object_fields_next { f :: fl }
 
 macro_expr:
@@ -294,7 +294,7 @@ expr_var:
 	| VAR; v = var_declaration { EVars([v]),mk $startpos $endpos }
 
 expr_metadata:
-	| m = metadata; e1 = expr %prec LOWEST { EMeta(m,e1),mk $startpos $endpos }
+	| m = metadata; e1 = expr { EMeta(m,e1),mk $startpos $endpos }
 
 expr_throw:
 	| THROW; e1 = expr { EThrow e1,mk $startpos $endpos }
@@ -324,16 +324,16 @@ expr_switch:
 	| SWITCH; e1 = expr; BROPEN; cases = case*; BRCLOSE { ESwitch(e1,cases,None),mk $startpos $endpos }
 
 expr_for:
-	| FOR; POPEN; e1 = expr; PCLOSE; e2 = expr %prec LOWEST { EFor(e1,e2),mk $startpos $endpos }
+	| FOR; POPEN; e1 = expr; PCLOSE; e2 = expr { EFor(e1,e2),mk $startpos $endpos }
 
 expr_while:
-	| WHILE; POPEN; e1 = expr; PCLOSE; e2 = expr %prec LOWEST { EWhile(e1,e2,NormalWhile),mk $startpos $endpos }
+	| WHILE; POPEN; e1 = expr; PCLOSE; e2 = expr { EWhile(e1,e2,NormalWhile),mk $startpos $endpos }
 
 expr_untyped:
 	| UNTYPED; e1 = expr { EUntyped e1,mk $startpos $endpos }
 
 expr_object_declaration:
-	| BROPEN; f = object_field; fl = object_fields_next BRCLOSE { EObjectDecl (f :: fl),mk $startpos $endpos }
+	| BROPEN; fl = object_fields; BRCLOSE { EObjectDecl fl,mk $startpos $endpos }
 
 expr_unsafe_cast:
 	| CAST; e1 = expr { ECast(e1,None),mk $startpos $endpos }
