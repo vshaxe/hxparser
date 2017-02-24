@@ -286,16 +286,30 @@ macro_expr_expr:
 macro_expr:
 	| macro_expr_type_hint | macro_expr_var | macro_expr_class_decl | macro_expr_expr { $1 }
 
-block_element:
+block_element_var:
 	| VAR; vl = var_declarations; SEMICOLON { EVars(vl),mk $startpos $endpos }
+
+block_element_inline_function:
 	| INLINE; FUNCTION; f = func; SEMICOLON { EFunction(fst f,snd f),mk $startpos $endpos }
+
+block_element_expr:
 	| e = expr_open; SEMICOLON { e }
 	| e = expr_closed; SEMICOLON { e }
 
-field_expr:
+%inline block_element:
+	| block_element_var | block_element_inline_function | block_element_expr { $1 }
+
+field_expr_none:
 	| SEMICOLON { None }
+
+field_expr_block:
 	| e = expr_block { Some e }
+
+field_expr_expr:
 	| e = expr; SEMICOLON { Some e }
+
+%inline field_expr:
+	| field_expr_none | field_expr_block | field_expr_expr { $1 }
 
 keyword_ident:
 	| THIS { EConst (Ident "this"),mk $startpos $endpos }
@@ -303,9 +317,14 @@ keyword_ident:
 	| FALSE { EConst (Ident "false"),mk $startpos $endpos }
 	| NULL { EConst (Ident "null"),mk $startpos $endpos }
 
-expr_block:
+expr_empty_block:
 	| BROPEN; BRCLOSE { EBlock [],mk $startpos $endpos }
+
+expr_nonempty_block:
 	| BROPEN; el = nonempty_list(block_element); BRCLOSE { EBlock el,mk $startpos $endpos }
+
+%inline expr_block:
+	| expr_empty_block | expr_nonempty_block { $1 }
 
 expr_var:
 	| VAR; v = var_declaration { EVars([v]),mk $startpos $endpos }
