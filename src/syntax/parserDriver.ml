@@ -135,7 +135,7 @@ module TokenProvider = struct
 	}
 
 	let add_skipped tp (token,trivia) =
-		tp.leading <- token :: tp.leading
+		tp.leading <- (List.rev trivia.ttrailing) @ [token] @ (List.rev trivia.tleading) @ tp.leading
 
 	let insert_token tp token =
 		tp.inserted_tokens <- token :: tp.inserted_tokens
@@ -292,6 +292,8 @@ module TokenProvider = struct
 			| _ -> token,trivia
 			end
 		| (token,trivia) :: tokens ->
+			let trivia = {trivia with tleading = List.rev tp.leading @ trivia.tleading} in
+			tp.leading <- [];
 			tp.inserted_tokens <- tokens;
 			let trivia = consume_trailing tp trivia in
 			token,trivia
