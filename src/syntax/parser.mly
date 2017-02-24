@@ -427,7 +427,7 @@ property_ident:
 	| s = pos(DEFAULT) { "default",pos s }
 	| s = pos(NULL) { "null",pos s }
 
-class_field:
+function_field:
 	| annotation = annotations; ml = modifier*; FUNCTION; name = function_name; tl = type_decl_parameters; POPEN; args = function_arguments; PCLOSE; ct = type_hint? eo = field_expr {
 		let f = {
 			f_params = tl;
@@ -445,6 +445,8 @@ class_field:
 		 } in
 		 cff
 	}
+
+variable_field:
 	| annotation = annotations; ml = modifier*; VAR; name = pos(dollar_ident); ct = type_hint?; eo = assignment?; SEMICOLON {
 		let cff = {
 			cff_name = name;
@@ -456,6 +458,8 @@ class_field:
 		 } in
 		 cff
 	}
+
+property_field:
 	| annotation = annotations; ml = modifier*; VAR; name = pos(dollar_ident); POPEN; get = property_ident; COMMA; set = property_ident; PCLOSE; ct = type_hint?; eo = assignment?; SEMICOLON {
 		let cff = {
 			cff_name = name;
@@ -467,6 +471,9 @@ class_field:
 		 } in
 		 cff
 	}
+
+%inline class_field:
+	| cff = function_field | cff = variable_field | cff = property_field { cff }
 
 enum_field_arg:
 	| opt = QUESTIONMARK?; name = dollar_ident; ct = type_hint; { (name,(match opt with None -> false | Some _ -> true),ct) }

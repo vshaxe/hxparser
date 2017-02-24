@@ -241,7 +241,9 @@ let s_xsymbol x =
 		begin match x with
 		| N_file -> "file"
 		| N_package -> "package"
-		| N_class_field -> "class_field"
+		| N_function_field -> "function_field"
+		| N_variable_field -> "variable_field"
+		| N_property_field -> "property_field"
 		| N_using_decl -> "using_decl"
 		| N_import_decl -> "import_decl"
 		| N_typedef_decl -> "typedef_decl"
