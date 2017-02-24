@@ -40,24 +40,15 @@ module TreeToJson (Api : JsonApi) = struct
 			) trivia.tflags;
 			let l = ("name",Api.jstring "token") :: jtoken token (match !acc with | [] -> [] | trivia -> ["trivia",Api.jobject trivia ]) in
 			Api.jobject l
-		| Node(_,[]) -> Api.jnull
-		| Node(sym,[t1]) ->
-			let name = s_xsymbol sym in
-			let j = to_json t1 in
-			if j = Api.jnull then Api.jnull
-			else (match name with "" -> j | _ -> Api.jobject["name",Api.jstring name;"sub",Api.jarray [j]])
+		| Node(sym,[]) when (s_xsymbol sym = "?") -> Api.jnull
 		| Node(sym,tl) ->
 			let name = s_xsymbol sym in
 			begin match List.rev tl with
 				| Node(sym2, tl2) :: tl when name = (s_xsymbol sym2) -> to_json (Node(sym,(List.rev tl) @ tl2))
 				| _ ->
 					let l = List.map to_json tl in
-					let l = List.filter (fun j -> j <> Api.jnull) l in
-					match l with
-					| [] -> Api.jnull
-					| _ ->
-						let j = Api.jarray l in
-						(match name with "" -> j | _ -> Api.jobject ["name",Api.jstring name;"sub",j])
+					let j = Api.jarray l in
+					(match name with "" -> j | _ -> Api.jobject ["name",Api.jstring name;"sub",j])
 			end
 
 	let convert tree blocks =
