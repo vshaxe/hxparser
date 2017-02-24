@@ -40,8 +40,8 @@ module TreeToJson (Api : JsonApi) = struct
 			) trivia.tflags;
 			let l = ("name",Api.jstring "token") :: jtoken token (match !acc with | [] -> [] | trivia -> ["trivia",Api.jobject trivia ]) in
 			Api.jobject l
-		| Node(sym,[]) when (s_xsymbol sym = "?") -> Api.jnull
-		| Node(sym,[t1]) when (s_xsymbol sym = "?") -> to_json t1
+		| Node(sym,[]) when (match s_xsymbol sym with "" | "?" -> true | _ -> false) -> Api.jnull
+		| Node(sym,[t1]) when (match s_xsymbol sym with "" | "?" -> true | _ -> false) -> to_json t1
 		| Node(sym,tl) ->
 			let name = s_xsymbol sym in
 			begin match List.rev tl with
@@ -49,7 +49,7 @@ module TreeToJson (Api : JsonApi) = struct
 				| _ ->
 					let l = List.map to_json tl in
 					let j = Api.jarray l in
-					(match name with "" -> j | _ -> Api.jobject ["name",Api.jstring name;"sub",j])
+					Api.jobject ["name",Api.jstring name;"sub",j]
 			end
 
 	let convert tree blocks =
