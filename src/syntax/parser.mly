@@ -204,7 +204,7 @@ call_args:
 	| POPEN; el = separated_list(COMMA, expr); PCLOSE { el }
 
 assignment:
-	| ASSIGN; e1 = expr_inline { e1 }
+	| ASSIGN; e1 = expr { e1 }
 
 var_declaration:
 	| name = pos(dollar_ident); ct = lpoption(type_hint); eo = lpoption(assignment) { (name,ct,eo) }
@@ -217,10 +217,10 @@ var_declarations:
 	| v = var_declaration; vl = var_declarations_next { v :: vl }
 
 else_expr:
-	| ELSE; e1 = expr_inline { e1 }
+	| ELSE; e1 = expr { e1 }
 
 catch:
-	| CATCH; POPEN; name = pos(dollar_ident); ct = type_hint; PCLOSE; e1 = expr_inline %prec LOWEST { (name,ct,e1,mk $startpos $endpos) }
+	| CATCH; POPEN; name = pos(dollar_ident); ct = type_hint; PCLOSE; e1 = expr %prec LOWEST { (name,ct,e1,mk $startpos $endpos) }
 
 guard:
 	| IF; POPEN; e1 = expr; PCLOSE { e1 }
@@ -235,7 +235,7 @@ case:
 	}
 
 func:
-	| name = dollar_ident?; tl = type_decl_parameters; POPEN; el = separated_list(COMMA,function_argument); PCLOSE; ct = type_hint?; e1 = expr_inline %prec LOWEST {
+	| name = dollar_ident?; tl = type_decl_parameters; POPEN; el = separated_list(COMMA,function_argument); PCLOSE; ct = type_hint?; e1 = expr %prec LOWEST {
 		let f = {
 			f_params = tl;
 			f_type = ct;
@@ -294,19 +294,19 @@ expr_var:
 	| VAR; v = var_declaration { EVars([v]),mk $startpos $endpos }
 
 expr_metadata:
-	| m = metadata; e1 = expr_inline %prec LOWEST { EMeta(m,e1),mk $startpos $endpos }
+	| m = metadata; e1 = expr %prec LOWEST { EMeta(m,e1),mk $startpos $endpos }
 
 expr_throw:
-	| THROW; e1 = expr_inline { EThrow e1,mk $startpos $endpos }
+	| THROW; e1 = expr { EThrow e1,mk $startpos $endpos }
 
 expr_if:
-	| IF; POPEN; e1 = expr; PCLOSE; e2 = expr_inline; eo = lpoption(else_expr) { EIf(e1,e2,eo),mk $startpos $endpos }
+	| IF; POPEN; e1 = expr; PCLOSE; e2 = expr; eo = lpoption(else_expr) { EIf(e1,e2,eo),mk $startpos $endpos }
 
 expr_return:
 	| RETURN { EReturn None,mk $startpos $endpos }
 
 expr_return_value:
-	| RETURN; e = expr_inline { EReturn (Some e),mk $startpos $endpos }
+	| RETURN; e = expr { EReturn (Some e),mk $startpos $endpos }
 
 expr_break:
 	| BREAK { EBreak,mk $startpos $endpos }
@@ -318,25 +318,25 @@ expr_do:
 	| DO; e1 = expr; WHILE; POPEN; e2 = expr; PCLOSE { EWhile(e2,e1,DoWhile),mk $startpos $endpos }
 
 expr_try:
-	| TRY; e1 = expr_inline; catches = lplist(catch); { ETry(e1,catches),mk $startpos $endpos }
+	| TRY; e1 = expr; catches = lplist(catch); { ETry(e1,catches),mk $startpos $endpos }
 
 expr_switch:
 	| SWITCH; e1 = expr; BROPEN; cases = case*; BRCLOSE { ESwitch(e1,cases,None),mk $startpos $endpos }
 
 expr_for:
-	| FOR; POPEN; e1 = expr; PCLOSE; e2 = expr_inline %prec LOWEST { EFor(e1,e2),mk $startpos $endpos }
+	| FOR; POPEN; e1 = expr; PCLOSE; e2 = expr %prec LOWEST { EFor(e1,e2),mk $startpos $endpos }
 
 expr_while:
-	| WHILE; POPEN; e1 = expr; PCLOSE; e2 = expr_inline %prec LOWEST { EWhile(e1,e2,NormalWhile),mk $startpos $endpos }
+	| WHILE; POPEN; e1 = expr; PCLOSE; e2 = expr %prec LOWEST { EWhile(e1,e2,NormalWhile),mk $startpos $endpos }
 
 expr_untyped:
-	| UNTYPED; e1 = expr_inline { EUntyped e1,mk $startpos $endpos }
+	| UNTYPED; e1 = expr { EUntyped e1,mk $startpos $endpos }
 
 expr_object_declaration:
 	| BROPEN; f = object_field; fl = object_fields_next BRCLOSE { EObjectDecl (f :: fl),mk $startpos $endpos }
 
 expr_unsafe_cast:
-	| CAST; e1 = expr_inline { ECast(e1,None),mk $startpos $endpos }
+	| CAST; e1 = expr { ECast(e1,None),mk $startpos $endpos }
 
 expr_safe_cast:
 	| CAST; POPEN; e1 = expr; COMMA; ct = complex_type; PCLOSE { ECast(e1,Some ct),mk $startpos $endpos }
@@ -378,10 +378,10 @@ expr_unary_postfix:
 	| e1 = expr_open; op = unary_postfix { EUnop(op,Postfix,e1),mk $startpos $endpos }
 
 expr_ternary:
-	| e1 = expr_open; QUESTIONMARK; e2 = expr; COLON; e3 = expr_inline { ETernary(e1,e2,e3),mk $startpos $endpos }
+	| e1 = expr_open; QUESTIONMARK; e2 = expr; COLON; e3 = expr { ETernary(e1,e2,e3),mk $startpos $endpos }
 
 expr_in:
-	| e1 = expr_open; IN; e2 = expr_inline { EIn(e1,e2),mk $startpos $endpos }
+	| e1 = expr_open; IN; e2 = expr { EIn(e1,e2),mk $startpos $endpos }
 
 expr_dotint:
 	| s = INT; DOT { EConst(Float (s ^ ".")),mk $startpos $endpos }
@@ -416,7 +416,7 @@ expr_open:
 	| e = expr_closed | e = expr_open | e = expr_var { e }
 
 expr:
-	| e = expr_inline { e }
+	| e = expr_closed | e = expr_open %prec LOWEST | e = expr_var { e }
 
 (* Type hints *)
 
