@@ -204,10 +204,14 @@ let process args =
 	let args_callback s =
 		paths := s :: !paths
 	in
-	(try
+	begin try
 		Arg.parse_argv ~current (Array.of_list ("" :: args)) args_spec args_callback usage;
-	with Arg.Bad _ ->
-		())
+	with
+	| Arg.Bad _ ->
+		()
+	| Arg.Help message ->
+		()
+	end
 ;;
 let args = (List.tl (Array.to_list Sys.argv)) in
 process args;;
