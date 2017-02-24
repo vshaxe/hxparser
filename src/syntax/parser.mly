@@ -264,7 +264,7 @@ object_fields:
 macro_expr:
 	| type_hint { EConst(Ident "null"),mk $startpos $endpos }
 	| VAR; var_declarations { EConst(Ident "null"),mk $startpos $endpos }
-	| class_decl { EConst(Ident "null"),mk $startpos $endpos }
+	| class_decl2 { EConst(Ident "null"),mk $startpos $endpos }
 	| expr_open %prec MACRO { EConst(Ident "null"),mk $startpos $endpos }
 	| expr_closed { EConst(Ident "null"),mk $startpos $endpos }
 
@@ -540,13 +540,19 @@ class_or_interface:
 	| CLASS { [] }
 	| INTERFACE { [HInterface] }
 
-class_decl:
+%inline class_decl2:
 	| flags = class_or_interface; name = pos(dollar_ident)?; tl = type_decl_parameters; rl = class_relations*; BROPEN; l = class_field*; BRCLOSE { flags,name,tl,rl,l }
 
-decl:
-	| annotations; IMPORT; import = import; SEMICOLON { import }
-	| annotations; USING; path = path_with_pos; SEMICOLON { EUsing path,mk $startpos $endpos }
-	| annotation = annotations; flags = common_flags*; c = class_decl { make_class annotation flags c (mk $startpos $endpos) }
+import_decl:
+	| IMPORT; import = import; SEMICOLON { import }
+
+using_decl:
+	| USING; path = path_with_pos; SEMICOLON { EUsing path,mk $startpos $endpos }
+
+class_decl:
+	| annotation = annotations; flags = common_flags*; c = class_decl2 { make_class annotation flags c (mk $startpos $endpos) }
+
+enum_decl:
 	| annotation = annotations; flags = common_flags*; ENUM; name = dollar_ident; tl = type_decl_parameters; BROPEN; l = enum_field*; BRCLOSE {
 		let def = {
 			d_name = (name,mk $startpos(name) $endpos(name));
@@ -558,6 +564,8 @@ decl:
 		} in
 		(EEnum def,mk $startpos $endpos)
 	}
+
+typedef_decl:
 	| annotation = annotations; flags = common_flags*; TYPEDEF; name = dollar_ident; tl = type_decl_parameters; ASSIGN; ct = complex_type; SEMICOLON? {
 		let def = {
 			d_name = (name,mk $startpos(name) $endpos(name));
@@ -569,6 +577,8 @@ decl:
 		} in
 		(ETypedef def,mk $startpos $endpos)
 	}
+
+abstract_decl:
 	| annotation = annotations; flags = common_flags*; ABSTRACT; name = dollar_ident; tl = type_decl_parameters; st = underlying_type?; rl = abstract_relations*; BROPEN; l = class_field*; BRCLOSE {
 		let flags = List.map (fun (_,c) -> match c with EPrivate -> APrivAbstract | EExtern -> AExtern) flags in
 		let flags = (match st with None -> flags | Some t -> AIsType t :: flags) in
@@ -582,6 +592,14 @@ decl:
 		} in
 		(EAbstract def,mk $startpos $endpos)
 	}
+
+%inline decl:
+	| import = import_decl { import }
+	| using = using_decl { using }
+	| c = class_decl { c }
+	| en = enum_decl { en }
+	| t = typedef_decl { t }
+	| a = abstract_decl { a }
 
 (* File *)
 
@@ -622,4 +640,4 @@ class_field_only:
 	| cff = class_field; EOF { cff }
 
 class_decl_only:
-	| c = class_decl; EOF { make_class (None,[]) [] c (mk $startpos $endpos) }
+	| c = class_decl2; EOF { make_class (None,[]) [] c (mk $startpos $endpos) }

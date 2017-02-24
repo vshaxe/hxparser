@@ -241,8 +241,12 @@ let s_xsymbol x =
 		begin match x with
 		| N_file -> "file"
 		| N_package -> "package"
-		| N_decl -> "decl"
 		| N_class_field -> "class_field"
+		| N_using_decl -> "using_decl"
+		| N_import_decl -> "import_decl"
+		| N_typedef_decl -> "typedef_decl"
+		| N_abstract_decl -> "abstract_decl"
+		| N_enum_decl -> "enum_decl"
 		| N_ident -> "ident"
 		| N_const -> "const"
 		| N_class_decl -> "class_decl"
