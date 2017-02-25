@@ -686,10 +686,15 @@ type_decl_parameters:
 	| LT; tl = separated_nonempty_list(COMMA,type_decl_parameter); GT { tl }
 	| { [] }
 
-import_mode:
+import_mode_alias:
 	| IN; ident = ident { IAsName ident }
 	| AS; ident = ident { IAsName ident }
+
+import_mode_all:
 	| DOTSTAR { IAll }
+
+%inline import_mode:
+	| import_mode_alias | import_mode_all { $1 }
 	| { INormal }
 
 import:

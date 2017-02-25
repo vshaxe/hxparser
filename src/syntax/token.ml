@@ -297,7 +297,6 @@ let s_xsymbol x =
 		| N_type_decl_parameter -> "type_decl_parameter"
 		| N_property_ident -> "property_ident"
 		| N_modifier -> ""
-		| N_import_mode -> "import_mode"
 		| N_import -> "import"
 		| N_guard -> "guard"
 		| N_function_name -> ""
@@ -383,6 +382,9 @@ let s_xsymbol x =
 		| N_type_path_parameter_bracket -> "bracket"
 		| N_type_path_parameter_complex_type -> "complex_type"
 		| N_type_path_parameter_literal -> "literal"
+		| N_unused -> ""
+		| N_import_mode_all -> "all"
+		| N_import_mode_alias -> "alias"
 		(* options *)
 		| N_option_package_ -> "?"
 		| N_option_type_hint_ -> "?"
