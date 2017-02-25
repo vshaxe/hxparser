@@ -66,18 +66,14 @@ let make_class annotation flags c p =
 
 (* Start and types *)
 
-%start file
-%start expr_only
-%start sharp_condition
-%start sharp_error_message
-%start sharp_line_number
+%start <string list option * Ast.type_decl list> file
+%start <Ast.expr> expr_only
+%start <Ast.expr> sharp_condition
+%start <string> sharp_error_message
+%start <string> sharp_line_number
 %start <Ast.class_field> class_field_only
 %start <Ast.type_decl> class_decl_only
-%type <string list option * Ast.type_decl list> file
-%type <Ast.expr> expr_only
-%type <Ast.expr> sharp_condition
-%type <string> sharp_error_message
-%type <string> sharp_line_number
+%start <unit> unused
 
 %on_error_reduce expr_open expr_closed expr
 %on_error_reduce path complex_type
@@ -807,3 +803,7 @@ class_field_only:
 
 class_decl_only:
 	| c = class_decl2; EOF { make_class (None,[]) [] c (mk $startpos $endpos) }
+
+unused:
+	| WHITESPACE | COMMENTLINE | NEWLINE | NONSENSE | SHARPIF | SHARPELSE
+	| SHARPELSEIF | SHARPEND | SHARPERROR | SHARPLINE | UNCLOSED { }
