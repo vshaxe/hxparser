@@ -170,16 +170,21 @@ and token lexbuf =
 	| "*=" -> update lexbuf; ASSIGNSTAR
 	| "/=" -> update lexbuf; ASSIGNSLASH
 	| "<<=" -> update lexbuf; ASSIGNSHL
+	| ">>=" -> update lexbuf; ASSIGNSHR
+	| ">>>=" -> update lexbuf; ASSIGNUSHR
 	| "||=" -> update lexbuf; ASSIGNBOOLOR
 	| "&&=" -> update lexbuf; ASSIGNBOOLAND
 	| "==" -> update lexbuf; EQUALS
 	| "!=" -> update lexbuf; NOTEQUALS
 	| "<=" -> update lexbuf; LTE
+	| ">=" -> update lexbuf; GTE
 	| "<" -> update lexbuf; LT
 	| ">" -> update lexbuf; GT
 	| "&&" -> update lexbuf; BOOLAND
 	| "||" -> update lexbuf; BOOLOR
 	| "<<" -> update lexbuf; SHL
+	| ">>" -> update lexbuf; SHR
+	| ">>>" -> update lexbuf; USHR
 	| "->" -> update lexbuf; ARROW
 	| "..." -> update lexbuf; INTERVAL
 	| "=>" -> update lexbuf; DOUBLEARROW

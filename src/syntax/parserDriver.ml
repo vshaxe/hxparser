@@ -371,15 +371,29 @@ and loop : 'a . (Config.t * TokenProvider.t) -> 'a State.t -> 'a result =
 			TokenProvider.insert_token tp last_offer;
 			loop (config,tp) state
 		in
+		let split (p1,p2,trivia) new1 new2 =
+			let open Lexing in
+			let p1' = {p1 with pos_cnum = p1.pos_cnum + 1} in
+			let token1 = (new1,p1,p1'),{trivia with ttrailing = []} in
+			let token2 = (new2,p1',p2),{trivia with tleading = []} in
+			TokenProvider.insert_token tp token2;
+			TokenProvider.insert_token tp token1;
+			loop (config,tp) state.recover_state
+		in
 		let acceptable = I.acceptable state.recover_state.checkpoint in
 		let was_inserted trivia = List.mem TFInserted trivia.tflags in
 		let fail () =
 			loop (config,tp) {state with checkpoint = I.resume state.checkpoint}
 		in
-		begin match state.last_shift with
-			| ((BRCLOSE,_,p),trivia) when not (was_inserted trivia) && acceptable SEMICOLON p -> insert SEMICOLON true p
+		begin match state.last_shift,state.last_offer with
+			| ((BRCLOSE,_,p),trivia),_ when not (was_inserted trivia) && acceptable SEMICOLON p -> insert SEMICOLON true p
+			| _,((SHR,p1,p2),trivia) when acceptable GT p1 -> split (p1,p2,trivia) GT GT
+			| _,((USHR,p1,p2),trivia) when acceptable GT p1 -> split (p1,p2,trivia) GT SHR
+			| _,((GTE,p1,p2),trivia) when acceptable GT p1 -> split (p1,p2,trivia) GT ASSIGN
+			| _,((ASSIGNSHR,p1,p2),trivia) when acceptable GT p1 -> split (p1,p2,trivia) GT GTE
+			| _,((ASSIGNUSHR,p1,p2),trivia) when acceptable GT p1 -> split (p1,p2,trivia) GT ASSIGNSHR
 			| _ when not config.recover -> fail()
-			| ((_,_,p),_) ->
+			| ((_,_,p),_),_ ->
 				if acceptable SEMICOLON p then insert SEMICOLON false p
 				else if acceptable PCLOSE p then insert PCLOSE false p
 				else if acceptable BRCLOSE p then insert BRCLOSE false p
