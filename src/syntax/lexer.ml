@@ -258,18 +258,18 @@ and code_string buffer lexbuf =
 		Buffer.contents buffer;
 	| '"' ->
 		add "\"";
-		let s = (try string (Buffer.create 0) lexbuf with Unclosed s -> s in
+		let s = (try string (Buffer.create 0) lexbuf with Unclosed s -> s) in
 		add s;
 		add "\"";
 		code_string buffer lexbuf
 	| "'" ->
 		add "'";
-		let s = (try string2 (Buffer.create 0) lexbuf with Unclosed s -> s in
+		let s = (try string2 (Buffer.create 0) lexbuf with Unclosed s -> s) in
 		add s;
 		add "'";
 		code_string buffer lexbuf
 	| "/*" ->
-		let s = (try string (Buffer.create 0) lexbuf with Unclosed s -> s in
+		let s = (try string (Buffer.create 0) lexbuf with Unclosed s -> s) in
 		add s;
 		code_string buffer lexbuf
 	| "//", Star (Compl ('\n' | '\r')) -> store(); code_string buffer lexbuf
