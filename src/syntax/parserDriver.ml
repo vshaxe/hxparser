@@ -409,7 +409,13 @@ and loop : 'a . (Config.t * TokenProvider.t) -> 'a State.t -> 'a result =
 			messages := (Printf.sprintf "[REJECT] %s" (print_token (fst state.last_offer))) :: !messages;
 		end else
 			messages := "[REJECT]" :: !messages;
-		Reject(!messages,state.tree)
+		let tree =
+			(* In recover mode we only fail if the last offer was EOF. Since that wasn't shifted,
+			   let's append it to the rejected tree. *)
+			if config.recover then Leaf state.last_offer :: state.tree
+			else state.tree
+		in
+		Reject(!messages,List.rev tree)
 
 and start : 'a . (Config.t * TokenProvider.t) -> 'a I.checkpoint -> 'a result = fun (config,tp) checkpoint ->
 	if has_debug config DStart then begin
