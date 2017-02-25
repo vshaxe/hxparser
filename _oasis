@@ -21,6 +21,7 @@ XOCamlbuildExtraArgs:
     -yaccflag --inspection
     -yaccflag --unused-tokens
     -yaccflag --explain
+    -yaccflag --log-automaton -yaccflag 1
     -ocamlopt ocamlopt.opt
 
 Flag js
