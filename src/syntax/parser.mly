@@ -71,7 +71,7 @@ let make_class annotation flags c p =
 %start <Ast.expr> sharp_condition
 %start <string> sharp_error_message
 %start <string> sharp_line_number
-%start <Ast.class_field> class_field_only
+%start <Ast.class_field list> class_fields_only
 %start <Ast.type_decl> class_decl_only
 %start <unit> unused
 
@@ -803,8 +803,8 @@ sharp_line_number:
 expr_only:
 	| expr = expr; EOF { expr }
 
-class_field_only:
-	| cff = class_field; EOF { cff }
+class_fields_only:
+	| cff = class_field+; EOF { cff }
 
 class_decl_only:
 	| c = class_decl2; EOF { make_class (None,[]) [] c (mk $startpos $endpos) }

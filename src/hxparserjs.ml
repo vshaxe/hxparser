@@ -33,8 +33,8 @@ let parse filename entrypoint s =
 				| Reject(sl,_) -> report_error sl
 				| Accept(_,tree,blocks) -> JsOfOcamlConverter.convert tree blocks
 				end;
-			| "class_field" ->
-				begin match run config lexbuf (Parser.Incremental.class_field_only lexbuf.pos) with
+			| "class_fields" ->
+				begin match run config lexbuf (Parser.Incremental.class_fields_only lexbuf.pos) with
 				| Reject(sl,_) -> report_error sl
 				| Accept(_,tree,blocks) -> JsOfOcamlConverter.convert tree blocks
 				end;
