@@ -57,7 +57,7 @@ let make_class annotation flags c p =
 %left PLUS MINUS
 %left STAR SLASH
 %left PERCENT
-%right INCREMENT DECREMENT TILDE EXCLAMATION
+%right INCREMENT DECREMENT EXCLAMATION
 %left ARROW
 %right QUESTIONMARK
 %right POPEN BKOPEN BROPEN
@@ -130,25 +130,7 @@ path_with_pos:
 
 (* Operators *)
 
-%inline op:
-	| PERCENT { OpMod }
-	| STAR { OpMult }
-	| SLASH { OpDiv }
-	| PLUS { OpAdd }
-	| MINUS { OpSub }
-	| SHL { OpShl }
-	| OR { OpOr }
-	| AND { OpAnd }
-	| XOR { OpXor }
-	| EQUALS { OpEq }
-	| NOTEQUALS { OpNotEq }
-	| GT { OpGt }
-	| LT { OpLt }
-	| LTE { OpLte }
-	| INTERVAL { OpInterval }
-	| BOOLAND { OpBoolAnd }
-	| BOOLOR { OpBoolOr }
-	| DOUBLEARROW { OpArrow }
+op_assign:
 	| ASSIGN { OpAssign }
 	| ASSIGNMOD { OpAssignOp(OpMod) }
 	| ASSIGNAND { OpAssignOp(OpAnd) }
@@ -163,18 +145,42 @@ path_with_pos:
 	| ASSIGNBOOLAND { OpAssignOp(OpBoolAnd) }
 	| GT; ASSIGN { OpAssignOp(OpGt) }
 	| GT; GT; ASSIGN { OpAssignOp(OpShr) }
-	| GT; GT { OpShr } (* TODO: make this fail for > > somehow *)
 	| GT; GT; GT; ASSIGN { OpAssignOp(OpUShr) }
+
+op_compare:
+	| EQUALS { OpEq }
+	| NOTEQUALS { OpNotEq }
+	| GT { OpGt }
+	| LT { OpLt }
+	| LTE { OpLte }
+	| GT; GT { OpShr } (* TODO: make this fail for > > somehow *)
 	| GT; GT; GT { OpUShr }
 
-%inline unary_prefix:
+op_bit:
+	| OR { OpOr }
+	| AND { OpAnd }
+	| XOR { OpXor }
+
+%inline op:
+	| PERCENT { OpMod }
+	| STAR { OpMult }
+	| SLASH { OpDiv }
+	| PLUS { OpAdd }
+	| MINUS { OpSub }
+	| SHL { OpShl }
+	| INTERVAL { OpInterval }
+	| BOOLAND { OpBoolAnd }
+	| BOOLOR { OpBoolOr }
+	| DOUBLEARROW { OpArrow }
+
+unary_prefix:
 	| INCREMENT { Increment }
 	| DECREMENT { Decrement }
 	| TILDE { NegBits }
 	| EXCLAMATION { Not }
 	| MINUS { Neg }
 
-%inline unary_postfix:
+unary_postfix:
 	| INCREMENT { Increment }
 	| DECREMENT { Decrement }
 	| EXCLAMATION { Not }
@@ -397,7 +403,7 @@ expr_function:
 	| FUNCTION; f = func { EFunction(fst f,snd f),mk $startpos $endpos }
 
 expr_unary_prefix:
-	| op = unary_prefix; e1 = expr_inline { EUnop(op,Prefix,e1),mk $startpos $endpos }
+	| op = unary_prefix; e1 = expr_inline %prec INCREMENT { EUnop(op,Prefix,e1),mk $startpos $endpos }
 
 expr_field:
 	| e1 = expr_open; name = dot_ident { EField(e1,name),mk $startpos $endpos }
@@ -410,6 +416,9 @@ expr_array_access:
 
 expr_binop:
 	| e1 = expr_open; op = op; e2 = expr_inline { EBinop(op,e1,e2),mk $startpos $endpos }
+	| e1 = expr_open; op = op_bit; e2 = expr_inline %prec AND { EBinop(op,e1,e2),mk $startpos $endpos }
+	| e1 = expr_open; op = op_compare; e2 = expr_inline %prec EQUALS { EBinop(op,e1,e2),mk $startpos $endpos }
+	| e1 = expr_open; op = op_assign; e2 = expr_inline %prec ASSIGN { EBinop(op,e1,e2),mk $startpos $endpos }
 
 expr_unary_postfix:
 	| e1 = expr_open; op = unary_postfix { EUnop(op,Postfix,e1),mk $startpos $endpos }
@@ -768,6 +777,9 @@ sharp_condition_both:
 sharp_condition_any:
 	| e = sharp_condition_both { e }
 	| e1 = sharp_condition_any; op = op; e2 = sharp_condition_any { EBinop(op,e1,e2),mk $startpos $endpos }
+	| e1 = sharp_condition_any; op = op_assign; e2 = sharp_condition_any %prec ASSIGN { EBinop(op,e1,e2),mk $startpos $endpos }
+	| e1 = sharp_condition_any; op = op_bit; e2 = sharp_condition_any %prec OR { EBinop(op,e1,e2),mk $startpos $endpos }
+	| e1 = sharp_condition_any; op = op_compare; e2 = sharp_condition_any %prec EQUALS { EBinop(op,e1,e2),mk $startpos $endpos }
 
 (* Entry points *)
 
