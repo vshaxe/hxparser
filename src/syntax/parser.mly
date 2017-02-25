@@ -513,10 +513,17 @@ complex_type:
 	| complex_type_parent | complex_type_extension | complex_type_anonymous | complex_type_optional
 	| complex_type_path | complex_type_function { $1 }
 
-type_path_parameter:
+type_path_parameter_bracket:
 	| BKOPEN; el = array_elements; BKCLOSE { TPExpr(EArrayDecl el,mk $startpos $endpos) }
+
+type_path_parameter_complex_type:
 	| ct = complex_type { TPType ct }
+
+type_path_parameter_literal:
 	| cst = literal { TPExpr (EConst cst,mk $startpos $endpos) }
+
+%inline type_path_parameter:
+	| type_path_parameter_bracket | type_path_parameter_complex_type | type_path_parameter_literal { $1 }
 	/*| e = expr { TPExpr e }*/
 
 type_path_parameters:

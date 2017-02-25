@@ -277,7 +277,6 @@ let s_xsymbol x =
 		| N_annotations -> "annotations"
 		| N_path -> "path"
 		| N_type_path_parameters -> "type_path_parameters"
-		| N_type_path_parameter -> "type_path_parameter"
 		| N_type_path -> "type_path"
 		| N_class_relations -> "class_relations"
 		| N_call_args -> "call_args"
@@ -374,6 +373,9 @@ let s_xsymbol x =
 		| N_macro_expr_expr -> "macro_expr"
 		| N_anonymous_type_fields_short_next -> "short_fields"
 		| N_anonymous_type_fields_short -> "short_fields"
+		| N_type_path_parameter_bracket -> "bracket"
+		| N_type_path_parameter_complex_type -> "complex_type"
+		| N_type_path_parameter_literal -> "literal"
 		(* options *)
 		| N_option_package_ -> "?"
 		| N_option_type_hint_ -> "?"
