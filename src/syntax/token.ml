@@ -258,7 +258,6 @@ let s_xsymbol x =
 		| N_literal_regex -> "literal_regex"
 		| N_enum_decl -> "enum_decl"
 		| N_ident -> "ident"
-		| N_const -> "const"
 		| N_class_decl -> "class_decl"
 		| N_expr_open -> ""
 		| N_expr_closed -> ""

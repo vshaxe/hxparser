@@ -201,7 +201,7 @@ literal_regex:
 literal:
 	| literal_string | literal_int | literal_float | literal_regex { $1 }
 
-const:
+%inline const:
 	| s = ident { Ident s }
 	| s = literal { s }
 
