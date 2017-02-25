@@ -663,10 +663,17 @@ common_flags:
 	| PRIVATE { HPrivate,EPrivate }
 	| EXTERN { HExtern,EExtern }
 
-constraints:
+constraints_multiple:
 	| COLON; POPEN; ct = complex_type; COMMA; ctl = separated_nonempty_list(COMMA,complex_type); PCLOSE { ct :: ctl }
+
+constraints_single:
 	| COLON; ct = complex_type { [ct] }
+
+constraints_none:
 	| { [] }
+
+%inline constraints:
+	| constraints_multiple | constraints_single | constraints_none { $1 }
 
 type_decl_parameter:
 	| annotation = annotations; name = pos(dollar_ident); ctl = constraints {
