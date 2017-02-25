@@ -370,7 +370,7 @@ let s_xsymbol x =
 		| N_macro_expr_type_hint -> "macro_type_hint"
 		| N_macro_expr_var -> "macro_var"
 		| N_macro_expr_class_decl -> "macro_class_decl"
-		| N_macro_expr_expr -> "macro_expr"
+		| N_macro_expr_expr -> "macro_expr_expr"
 		| N_anonymous_type_fields_short_next -> "short_fields"
 		| N_anonymous_type_fields_short -> "short_fields"
 		| N_type_path_parameter_bracket -> "bracket"
