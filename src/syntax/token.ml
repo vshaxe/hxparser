@@ -291,7 +291,7 @@ let s_xsymbol x =
 		| N_type_decl_parameters -> "type_decl_parameters"
 		| N_type_decl_parameter -> "type_decl_parameter"
 		| N_property_ident -> "property_ident"
-		| N_modifier -> "modifier"
+		| N_modifier -> ""
 		| N_import_mode -> "import_mode"
 		| N_import -> "import"
 		| N_guard -> "guard"
