@@ -230,7 +230,7 @@ and string2 buffer lexbuf =
 	let store () = Buffer.add_string buffer (lexeme lexbuf) in
 	let buf = lexbuf.stream in
 	match%sedlex buf with
-	| eof -> raise Exit
+	| eof -> raise (Unclosed (Buffer.contents buffer));
 	| '\n' | '\r' | "\r\n" -> new_line lexbuf; store(); string2 buffer lexbuf
 	| '\\' -> store(); string2 buffer lexbuf
 	| "\\\\" -> store(); string2 buffer lexbuf
@@ -250,7 +250,7 @@ and code_string buffer lexbuf =
 	let store () = add (lexeme lexbuf) in
 	let buf = lexbuf.stream in
 	match%sedlex buf with
-	| eof -> raise Exit
+	| eof -> raise (Unclosed (Buffer.contents buffer));
 	| '\n' | '\r' | "\r\n" -> new_line lexbuf; store(); code_string buffer lexbuf
 	| '{' | '/' -> store(); code_string buffer lexbuf
 	| '}' ->
@@ -258,18 +258,18 @@ and code_string buffer lexbuf =
 		Buffer.contents buffer;
 	| '"' ->
 		add "\"";
-		let s = string (Buffer.create 0) lexbuf in
+		let s = (try string (Buffer.create 0) lexbuf with Unclosed s -> s in
 		add s;
 		add "\"";
 		code_string buffer lexbuf
 	| "'" ->
 		add "'";
-		let s = string2 (Buffer.create 0) lexbuf in
+		let s = (try string2 (Buffer.create 0) lexbuf with Unclosed s -> s in
 		add s;
 		add "'";
 		code_string buffer lexbuf
 	| "/*" ->
-		let s = string (Buffer.create 0) lexbuf in
+		let s = (try string (Buffer.create 0) lexbuf with Unclosed s -> s in
 		add s;
 		code_string buffer lexbuf
 	| "//", Star (Compl ('\n' | '\r')) -> store(); code_string buffer lexbuf
@@ -280,7 +280,7 @@ and comment buffer lexbuf =
 	let store () = Buffer.add_string buffer (lexeme lexbuf) in
 	let buf = lexbuf.stream in
 	match%sedlex buf with
-	| eof -> raise Exit
+	| eof -> raise (Unclosed (Buffer.contents buffer));
 	| '\n' | '\r' | "\r\n" -> new_line lexbuf; store(); comment buffer lexbuf
 	| "*/" -> update lexbuf; Buffer.contents buffer
 	| '*' -> store(); comment buffer lexbuf
@@ -292,7 +292,7 @@ and regexp buffer lexbuf =
 	let store () = add (lexeme lexbuf) in
 	let buf = lexbuf.stream in
 	match%sedlex buf with
-	| eof | '\n' | '\r' -> raise Exit
+	| eof | '\n' | '\r' -> raise (Unclosed (Buffer.contents buffer));
 	| '\\', '/' -> add "/"; regexp buffer lexbuf
 	| '\\', 'r' -> add "\r"; regexp buffer lexbuf
 	| '\\', 'n' -> add "\n"; regexp buffer lexbuf
