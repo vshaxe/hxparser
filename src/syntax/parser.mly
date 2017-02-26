@@ -466,7 +466,7 @@ structural_extension:
 	| GT; tp = type_path; COMMA { tp }
 
 anonymous_type_field:
-	| opt = QUESTIONMARK?; name = pos(dollar_ident); COLON; ct = complex_type {
+	| opt = QUESTIONMARK?; name = pos(dollar_ident); ct = type_hint {
 		let cff = {
 			cff_name = name;
 			cff_meta = (match opt with None -> [] | Some _ -> [Meta.Optional,[],Pos.Range.null]);
