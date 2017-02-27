@@ -21,7 +21,7 @@ let config = {
 let parse filename entrypoint s =
 	let open Sedlex_menhir in
 	let report_error sl =
-		Js.Unsafe.inject (Js.string "something went wrong")
+		Js.Unsafe.inject (Js.string "something went very wrong")
 	in
 	let s = Js.to_string s in
 	let lexbuf = create_lexbuf ~file:filename (Sedlexing.Utf8.from_string s) in
