@@ -56,11 +56,13 @@ module TreeToJson (Api : JsonApi) = struct
 					end
 			end
 
-	let convert tree blocks =
+	let convert tree blocks errors =
 		let tree = List.map to_json tree in
 		let tree = Api.jobject ["name",Api.jstring "tree";"sub",Api.jarray tree] in
 		let blocks = List.map (fun (p1,p2) -> Api.jobject (range_to_json p1 p2 [])) blocks in
 		let blocks = Api.jobject ["name",Api.jstring "blocks";"sub",Api.jarray blocks] in
-		let js = Api.jobject ["document",Api.jobject ["tree",tree;"blocks",blocks]] in
+		let errors = List.map (fun s -> Api.jstring s) errors in
+		let errors = Api.jobject ["name",Api.jstring "errors";"sub",Api.jarray errors] in
+		let js = Api.jobject ["document",Api.jobject ["tree",tree;"blocks",blocks;"errors",errors]] in
 		js
 end

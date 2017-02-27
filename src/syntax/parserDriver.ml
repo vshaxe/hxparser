@@ -81,7 +81,7 @@ end
 
 type 'a result =
 	| Accept of 'a * tree list * range list
-	| Reject of string list * tree list
+	| Reject of string list * tree list * range list
 
 let print_position = Pos.Position.print
 
@@ -429,7 +429,7 @@ and loop : 'a . (Config.t * TokenProvider.t) -> 'a State.t -> 'a result =
 			if config.recover then Leaf state.last_offer :: state.tree
 			else state.tree
 		in
-		Reject(!messages,List.rev tree)
+		Reject(!messages,List.rev tree,tp.TokenProvider.blocks)
 
 and start : 'a . (Config.t * TokenProvider.t) -> 'a I.checkpoint -> 'a result = fun (config,tp) checkpoint ->
 	if has_debug config DStart then begin

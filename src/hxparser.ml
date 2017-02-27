@@ -68,18 +68,18 @@ let parse filename =
 	let lexbuf = create_lexbuf ~file:filename (Sedlexing.Utf8.from_channel ch) in
 	begin try
 		let _ = Lexer.skip_header lexbuf in
-		let print_json tree blocks = match tree with
+		let print_json tree blocks errors = match tree with
 			| [] -> ()
 			| tl ->
-				let js = JSONConverter.convert tree blocks in
+				let js = JSONConverter.convert tree blocks errors in
 				let buffer = Buffer.create 0 in
 				write_json (Buffer.add_string buffer) js;
 				print_endline (Buffer.contents buffer);
 		in
 		begin match run config lexbuf (Parser.Incremental.file lexbuf.pos) with
-			| Reject(sl,tree) ->
+			| Reject(sl,tree,blocks) ->
 				if !output_json then begin
-					print_json tree [];
+					print_json tree blocks sl;
 					exit 0
 				end;
 				report_error sl
@@ -99,7 +99,7 @@ let parse filename =
 					end
 				end;
 				if !output_json then begin
-					print_json tree blocks;
+					print_json tree blocks [];
 					exit 0;
 				end;
 		end;
