@@ -73,6 +73,7 @@ let make_class annotation flags c p =
 %start <string> sharp_line_number
 %start <Ast.class_field list> class_fields_only
 %start <Ast.type_decl> class_decl_only
+%start <Ast.expr list> block_elements_only
 %start <unit> unused
 
 %on_error_reduce expr_open expr_closed expr
@@ -808,6 +809,9 @@ class_fields_only:
 
 class_decl_only:
 	| c = class_decl2; EOF { make_class (None,[]) [] c (mk $startpos $endpos) }
+
+block_elements_only:
+	| el = block_element+; EOF { el }
 
 unused:
 	| WHITESPACE | COMMENTLINE | NEWLINE | NONSENSE | SHARPIF | SHARPELSE

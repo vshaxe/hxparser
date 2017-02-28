@@ -43,6 +43,11 @@ let parse filename entrypoint s =
 				| Reject(sl,tree,blocks) -> JsOfOcamlConverter.convert tree blocks sl
 				| Accept(_,tree,blocks) -> JsOfOcamlConverter.convert tree blocks []
 				end;
+			| "block_elements" ->
+				begin match run config lexbuf (Parser.Incremental.block_elements_only lexbuf.pos) with
+				| Reject(sl,tree,blocks) -> JsOfOcamlConverter.convert tree blocks sl
+				| Accept(_,tree,blocks) -> JsOfOcamlConverter.convert tree blocks []
+				end;
 			| entrypoint -> failwith ("Unknown entry point: " ^ entrypoint)
 		end
 	with exc ->

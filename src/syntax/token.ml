@@ -339,6 +339,7 @@ let s_xsymbol x =
 		| N_dot_ident -> "dot_ident"
 		| N_class_fields_only -> "class_fields_only"
 		| N_class_decl_only -> "class_decl_only"
+		| N_block_elements_only -> "block_elements_only"
 		| N_expr_metadata -> "expr_metadata"
 		| N_expr_macro -> "expr_macro"
 		| N_expr_throw -> "expr_throw"
