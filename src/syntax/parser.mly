@@ -385,7 +385,8 @@ expr_new:
 	| NEW; tp = type_path; el = call_args { ENew(tp,el),mk $startpos $endpos }
 
 lambda_function_argument:
-	| name = expr; ct = lpoption(type_hint); eo = assignment? { (name,(match None with None -> false | Some _ -> true),[],ct,eo) }
+	| name = expr; ct = lpoption(type_hint); eo = assignment? { (name,false,[],ct,eo) }
+	| QUESTIONMARK; name = pos(dollar_ident); ct = lpoption(type_hint); eo = assignment? { ((EConst(Ident (fst name)),snd name),true,[],ct,eo) }
 
 lambda_function_arguments:
 	| COMMA; l = separated_nonempty_list(COMMA,function_argument) { l }
