@@ -451,10 +451,14 @@ expr_keyword_ident:
 
 expr_lambda:
 	| args = expr_typechecks; ARROW; e1 = expr {
-		let args = match fst args with
-		| ((EConst(Ident s),p),opt,meta,ct,eo) -> ((s,p),opt,meta,ct,eo) :: (snd args)
-		| _ -> $syntaxerror
+		let rec loop acc e = match fst e with
+			| EMeta(meta,e) -> loop (meta :: acc) e
+			| EConst(Ident s) -> (s,snd e),List.rev acc
+			| _ -> $syntaxerror
 		in
+		let e,opt,_,ct,eo = fst args  in
+		let e,meta = loop [] e in
+		let args = (e,opt,meta,ct,eo) :: (snd args) in
 		let f = {
 			f_params = [];
 			f_type = None;
@@ -485,8 +489,8 @@ expr_open:
 	| expr_const | expr_keyword_ident { $1 }
 	| tc = expr_typechecks {
 		let e = match tc with
-		| (e,false,[],None,None),[] -> EParenthesis e
-		| (e,false,[],Some ct,None),[] -> ECheckType(e,ct)
+		| (e,false,_,None,None),[] -> EParenthesis e
+		| (e,false,_,Some ct,None),[] -> ECheckType(e,ct)
 		| _ -> $syntaxerror
 		in
 		e,mk $startpos $endpos
