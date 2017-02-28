@@ -358,8 +358,8 @@ let s_xsymbol x =
 		| N_expr_unsafe_cast -> "expr_unsafe_cast"
 		| N_expr_safe_cast -> "expr_safe_cast"
 		| N_expr_new -> "expr_new"
-		| N_expr_parenthesis -> "expr_parenthesis"
-		| N_expr_typecheck -> "expr_typecheck"
+		(*| N_expr_parenthesis -> "expr_parenthesis"*)
+		(*| N_expr_typecheck -> "expr_typecheck"*)
 		| N_expr_is -> "expr_is"
 		| N_expr_array_declaration -> "expr_array_declaration"
 		| N_expr_function -> "expr_function"
@@ -377,6 +377,7 @@ let s_xsymbol x =
 		| N_expr_const -> "expr_const"
 		| N_expr_keyword_ident -> "expr_keyword_ident"
 		| N_expr_var -> "expr_var"
+		| N_expr_lambda -> "expr_lambda"
 		| N_complex_type_parent -> "parenthesis"
 		| N_complex_type_extension -> "extension"
 		| N_complex_type_anonymous -> "anonymous"
@@ -395,6 +396,7 @@ let s_xsymbol x =
 		| N_unused -> ""
 		| N_import_mode_all -> "all"
 		| N_import_mode_alias -> "alias"
+		| N_expr_typechecks -> "typechecks"
 		(* options *)
 		| N_option_package_ -> "?"
 		| N_option_type_hint_ -> "?"
@@ -442,4 +444,6 @@ let s_xsymbol x =
 		| N_separated_nonempty_list_COMMA_enum_field_arg_ -> "args"
 		| N_loption_separated_nonempty_list_COMMA_enum_field_arg__ -> "args"
 		| N_list_enum_field_ -> "enum_fields"
+		| N_lambda_function_arguments -> "args"
+		| N_lambda_function_argument -> "arg"
 		end

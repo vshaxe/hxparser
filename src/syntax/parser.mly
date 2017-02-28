@@ -384,11 +384,15 @@ expr_safe_cast:
 expr_new:
 	| NEW; tp = type_path; el = call_args { ENew(tp,el),mk $startpos $endpos }
 
-expr_parenthesis:
-	| POPEN; e1 = expr; PCLOSE { EParenthesis e1,mk $startpos $endpos }
+lambda_function_argument:
+	| name = expr; ct = lpoption(type_hint); eo = assignment? { (name,(match None with None -> false | Some _ -> true),[],ct,eo) }
 
-expr_typecheck:
-	| POPEN; e1 = expr; COLON; ct = complex_type; PCLOSE { ECheckType(e1,ct),mk $startpos $endpos }
+lambda_function_arguments:
+	| COMMA; l = separated_nonempty_list(COMMA,function_argument) { l }
+	| { [] }
+
+expr_typechecks:
+	| POPEN; arg = lambda_function_argument; args = lambda_function_arguments; PCLOSE { arg,args }
 
 expr_is:
 	| POPEN; e1 = expr; is = pos(IS); tp = type_path; PCLOSE { make_is e1 tp (snd is) (mk $startpos $endpos) }
@@ -444,16 +448,48 @@ expr_const:
 expr_keyword_ident:
 	| e1 = keyword_ident { e1 }
 
+expr_lambda:
+	| args = expr_typechecks; ARROW; e1 = expr {
+		let args = match fst args with
+		| ((EConst(Ident s),p),opt,meta,ct,eo) -> ((s,p),opt,meta,ct,eo) :: (snd args)
+		| _ -> $syntaxerror
+		in
+		let f = {
+			f_params = [];
+			f_type = None;
+			f_args = args;
+			f_expr = Some e1
+		} in
+		EFunction(None, f),mk $startpos $endpos
+	}
+	| POPEN; PCLOSE; ARROW; e1 = expr {
+		let f = {
+			f_params = [];
+			f_type = None;
+			f_args = [];
+			f_expr = Some e1
+		} in
+		EFunction(None, f),mk $startpos $endpos
+	}
+
 expr_closed:
 	| expr_metadata | expr_macro | expr_block | expr_throw | expr_if | expr_return | expr_return_value | expr_break | expr_continue
-	| expr_do | expr_try | expr_switch | expr_for | expr_while | expr_untyped { $1 }
+	| expr_do | expr_try | expr_switch | expr_for | expr_while | expr_untyped | expr_lambda { $1 }
 
 expr_open:
-	| expr_object_declaration | expr_unsafe_cast | expr_safe_cast | expr_new | expr_parenthesis
-	| expr_typecheck | expr_is | expr_array_declaration | expr_function | expr_unary_prefix
+	| expr_object_declaration | expr_unsafe_cast | expr_safe_cast | expr_new
+	| expr_is | expr_array_declaration | expr_function | expr_unary_prefix
 	| expr_field | expr_call | expr_array_access | expr_binop | expr_unary_postfix
 	| expr_ternary | expr_in | expr_dotint | expr_dollarident | expr_macro_escape
 	| expr_const | expr_keyword_ident { $1 }
+	| tc = expr_typechecks {
+		let e = match tc with
+		| (e,false,[],None,None),[] -> EParenthesis e
+		| (e,false,[],Some ct,None),[] -> ECheckType(e,ct)
+		| _ -> $syntaxerror
+		in
+		e,mk $startpos $endpos
+	}
 
 %inline expr_inline:
 	| e = expr_closed | e = expr_open | e = expr_var { e }
