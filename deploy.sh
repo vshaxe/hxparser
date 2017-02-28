@@ -1,4 +1,4 @@
-if [[ $TRAVIS_BRANCH != 'master' ]]
+if [[ $TRAVIS_BRANCH != 'master' ]]; then
 	exit
 fi
 
