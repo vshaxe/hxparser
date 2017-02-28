@@ -1,10 +1,14 @@
-sudo: required
+sudo: false
+
+addons:
+  sources:
+    - avsm
+  apt:
+    packages:
+    - ocaml
+    - opam
 
 install:
-- sudo add-apt-repository ppa:avsm/ppa -y
-- sudo apt-get update
-- sudo apt-get install -y ocaml
-- sudo apt-get install -y opam
 - opam init -n
 - eval `opam config env`
 - opam install oasis -y
