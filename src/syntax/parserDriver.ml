@@ -2,6 +2,7 @@ open Ast
 open Sedlex_menhir
 open Printf
 open Parser
+open Tokens
 open Token
 
 module I = MenhirInterpreter

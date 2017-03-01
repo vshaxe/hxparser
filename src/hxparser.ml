@@ -30,7 +30,7 @@ let to_haxe tree =
 	| Leaf((tk,_,_),trivia) ->
 		List.iter (fun (tk,_,_) -> Buffer.add_string buf (Token.s_token tk)) trivia.tleading;
 		if not (List.exists (function TFImplicit | TFInserted -> true | TFSkipped -> false) trivia.tflags) then begin
-			if tk <> Parser.EOF then
+			if tk <> Tokens.EOF then
 				Buffer.add_string buf (Token.s_token tk)
 		end;
 		List.iter (fun (tk,_,_) -> Buffer.add_string buf (Token.s_token tk)) trivia.ttrailing;

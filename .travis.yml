@@ -1,10 +1,14 @@
-sudo: required
+sudo: false
+
+addons:
+  apt:
+    sources:
+      - avsm
+    packages:
+      - ocaml
+      - opam
 
 install:
-- sudo add-apt-repository ppa:avsm/ppa -y
-- sudo apt-get update
-- sudo apt-get install -y ocaml
-- sudo apt-get install -y opam
 - opam init -n
 - eval `opam config env`
 - opam install oasis -y
@@ -18,17 +22,4 @@ script:
 - make build
 
 after_success:
-- openssl aes-256-cbc -K $encrypted_4ed650af1ebb_key -iv $encrypted_4ed650af1ebb_iv -in deploy_key.enc -out deploy_key -d
-- chmod 600 deploy_key
-- eval `ssh-agent -s`
-- ssh-add deploy_key
-- cd ..
-- ssh -T git@github.com
-- git clone git@github.com:/vshaxe/haxe-hxparser.git
-- cd haxe-hxparser
-- cp ../hxparser/hxparserjs.js .
-- git config user.name 'Travis CI'
-- git config user.email '<>'
-- git add -A
-- git commit -m "Update hxparserjs.js"
-- git push origin
+- bash deploy.sh
