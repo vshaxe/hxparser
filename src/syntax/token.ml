@@ -1,4 +1,5 @@
 open Parser
+open Tokens
 
 let rec s_token tk = match tk with
 	| COLON -> ":"

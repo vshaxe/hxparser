@@ -15,7 +15,7 @@
  *)
 
 open Sedlex_menhir
-open Parser
+open Tokens
 
 exception Unclosed of string
 

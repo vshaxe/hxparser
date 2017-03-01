@@ -9,7 +9,7 @@ myocamlbuild.ml
 setup.data
 setup.ml
 Makefile
-_tags
+/_tags
 ignore.txt
 setup.log
 /bin/*
