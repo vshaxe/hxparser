@@ -1,12 +1,12 @@
 sudo: false
 
 addons:
-  sources:
-    - avsm
   apt:
+    sources:
+      - avsm
     packages:
-    - ocaml
-    - opam
+      - ocaml
+      - opam
 
 install:
 - opam init -n
