@@ -60,9 +60,7 @@ module TreeToJson (Api : JsonApi) (E : Engine) = struct
 					end
 			end
 
-	let convert tree tp blocks errors =
-		let tree = List.map to_json tree in
-		let tree = Api.jobject ["name",Api.jstring "tree";"sub",Api.jarray tree] in
+	let convert data tp blocks errors =
 		let open WorkList in
 		let open LinkedNode in
 		let tokens = to_list (fun node ->
@@ -74,7 +72,7 @@ module TreeToJson (Api : JsonApi) (E : Engine) = struct
 		let errors = List.map (fun s -> Api.jstring s) errors in
 		let errors = Api.jobject ["name",Api.jstring "errors";"sub",Api.jarray errors] in
 		let js = Api.jobject ["document",Api.jobject [
-			"tree",tree;
+			"tree",data;
 			"tokens",Api.jarray tokens;
 			"skipped",Api.jarray skipped;
 			"blocks",Api.jarray blocks;

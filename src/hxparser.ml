@@ -1,20 +1,7 @@
 open Config
 open Json
 
-module Parser = Parser.Make(AstEmitter)
-
-module AstParserEngine = struct
-	module I = Parser.MenhirInterpreter
-	let s_xsymbol = Obj.magic SymbolPrinter.s_xsymbol
-
-	type tree =
-		| Node of I.xsymbol * tree list
-		| Leaf of Token.token_info
-end
-
-module AstParserDriver = ParserDriver.Make(AstParserEngine)
-
-module JSONConverter = JsonConverter.TreeToJson(struct
+module JSON = struct
 	open Json
 
 	type t = Json.t
@@ -24,7 +11,24 @@ module JSONConverter = JsonConverter.TreeToJson(struct
 	let jstring s = JString s
 	let jbool b = JBool b
 	let jnull = JNull
-end) (AstParserEngine)
+end
+
+module Emitter = JsonEmitter.JsonEmitter(JSON)
+
+module Parser = Parser.Make(Emitter)
+
+module ParserEngine = struct
+	module I = Parser.MenhirInterpreter
+	let s_xsymbol = Obj.magic SymbolPrinter.s_xsymbol
+
+	type tree =
+		| Node of I.xsymbol * tree list
+		| Leaf of Token.token_info
+end
+
+module ParserDriver = ParserDriver.Make(ParserEngine)
+
+module JSONConverter = JsonConverter.TreeToJson(JSON) (ParserEngine)
 
 let config = Config.default_config()
 let quit_early = ref true
@@ -74,25 +78,19 @@ let parse filename =
 	begin try
 		let _ = Lexer.skip_header lexbuf in
 		let tp = TokenProvider.create lexbuf in
-		let print_json tree blocks errors = match tree with
-			| [] -> ()
-			| tl ->
-				let js = JSONConverter.convert tree tp blocks errors in
-				let buffer = Buffer.create 0 in
-				write_json (Buffer.add_string buffer) js;
-				print_endline (Buffer.contents buffer);
+		let print_json tree blocks errors =
+			let js = JSONConverter.convert tree tp blocks errors in
+			let buffer = Buffer.create 0 in
+			write_json (Buffer.add_string buffer) js;
+			print_endline (Buffer.contents buffer);
 		in
-		let open AstParserDriver in
-		begin match AstParserDriver.run config tp (Parser.Incremental.file lexbuf.pos) with
+		let open ParserDriver in
+		begin match ParserDriver.run config tp (Parser.Incremental.file lexbuf.pos) with
 			| Reject(sl,tree,blocks) ->
+				assert false
+			| Accept((pack,decls),tree,blocks) ->
 				if !output_json then begin
-					print_json tree blocks sl;
-					exit 0
-				end;
-				report_error sl
-			| Accept(_,tree,blocks) ->
-				if !output_json then begin
-					print_json tree blocks [];
+					print_json (Emitter.emit_file pack decls) blocks [];
 					exit 0;
 				end;
 		end;

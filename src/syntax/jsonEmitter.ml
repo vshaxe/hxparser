@@ -715,4 +715,10 @@ module JsonEmitter(Api : JsonApi) = struct
 		Api.jobject [
 			"path",opt path
 		]
+
+	let emit_file pack decls =
+		Api.jobject [
+			"pack",opt pack;
+			"decls",arr decls;
+		]
 end

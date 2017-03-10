@@ -1,21 +1,6 @@
 open Config
 
-module Parser = Parser.Make(NullEmitter)
-
-module NullParserEngine = struct
-	module I = Parser.MenhirInterpreter
-	let s_xsymbol = SymbolPrinter.s_xsymbol
-
-	type tree =
-		| Node of I.xsymbol * tree list
-		| Leaf of Token.token_info
-end
-
-module NullParserDriver = ParserDriver.Make(NullParserEngine)
-
-open NullParserDriver
-
-module JsOfOcamlConverter = JsonConverter.TreeToJson(struct
+module JSON = struct
 	type t = Js.Unsafe.any
 	let jobject l = Js.Unsafe.inject (Js.Unsafe.obj (Array.of_list l))
 	let jarray l = Js.Unsafe.inject (Js.array (Array.of_list l))
@@ -24,7 +9,26 @@ module JsOfOcamlConverter = JsonConverter.TreeToJson(struct
 	let jnull = Js.Unsafe.inject Js.null
 	let jbool b = Js.Unsafe.inject (Js.bool b)
 	let jstring s = Js.Unsafe.inject (Js.string s)
-end) (NullParserEngine)
+end
+
+module Emitter = JsonEmitter.JsonEmitter(JSON)
+
+module Parser = Parser.Make(Emitter)
+
+module ParserEngine = struct
+	module I = Parser.MenhirInterpreter
+	let s_xsymbol = Obj.magic SymbolPrinter.s_xsymbol
+
+	type tree =
+		| Node of I.xsymbol * tree list
+		| Leaf of Token.token_info
+end
+
+module ParserDriver = ParserDriver.Make(ParserEngine)
+
+open ParserDriver
+
+module JsOfOcamlConverter = JsonConverter.TreeToJson (JSON) (ParserEngine)
 
 let config = {
 	debug_flags = [];
@@ -45,10 +49,10 @@ let parse filename entrypoint s =
 		begin match Js.to_string entrypoint with
 			| "file" ->
 				begin match run config tp (Parser.Incremental.file lexbuf.pos) with
-				| Reject(sl,tree,blocks) -> JsOfOcamlConverter.convert tree tp blocks sl
-				| Accept(_,tree,blocks) -> JsOfOcamlConverter.convert tree tp blocks []
+				| Reject(sl,tree,blocks) -> assert false
+				| Accept((pack,decls),tree,blocks) -> JsOfOcamlConverter.convert (Emitter.emit_file pack decls) tp blocks []
 				end;
-			| "class_fields" ->
+			(*| "class_fields" ->
 				begin match run config tp (Parser.Incremental.class_fields_only lexbuf.pos) with
 				| Reject(sl,tree,blocks) -> JsOfOcamlConverter.convert tree tp blocks sl
 				| Accept(_,tree,blocks) -> JsOfOcamlConverter.convert tree tp blocks []
@@ -62,7 +66,7 @@ let parse filename entrypoint s =
 				begin match run config tp (Parser.Incremental.block_elements_only lexbuf.pos) with
 				| Reject(sl,tree,blocks) -> JsOfOcamlConverter.convert tree tp blocks sl
 				| Accept(_,tree,blocks) -> JsOfOcamlConverter.convert tree tp blocks []
-				end;
+				end;*)
 			| entrypoint -> failwith ("Unknown entry point: " ^ entrypoint)
 		end
 	with exc ->
