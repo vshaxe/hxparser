@@ -18,51 +18,9 @@
  *)
 
 open Globals
+open Ops
 
 type pos = Pos.Range.t
-
-type binop =
-	| OpAdd
-	| OpMult
-	| OpDiv
-	| OpSub
-	| OpAssign
-	| OpEq
-	| OpNotEq
-	| OpGt
-	| OpGte
-	| OpLt
-	| OpLte
-	| OpAnd
-	| OpOr
-	| OpXor
-	| OpBoolAnd
-	| OpBoolOr
-	| OpShl
-	| OpShr
-	| OpUShr
-	| OpMod
-	| OpAssignOp of binop
-	| OpInterval
-	| OpArrow
-
-type unop =
-	| Increment
-	| Decrement
-	| Not
-	| Neg
-	| NegBits
-
-type constant =
-	| Int of string
-	| Float of string
-	| String of string
-	| Ident of string
-	| Regexp of string * string
-
-type unop_flag =
-	| Prefix
-	| Postfix
 
 type while_flag =
 	| NormalWhile

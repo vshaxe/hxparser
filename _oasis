@@ -17,6 +17,7 @@ AlphaFeatures:
 XOCamlbuildExtraArgs:
     -no-ocamlfind
     -use-menhir
+    -yaccflag --infer
     -yaccflag --table
     -yaccflag --inspection
     -yaccflag --unused-tokens
@@ -60,8 +61,25 @@ Library "haxe-root"
     Modules: Globals,Json
     Install: false
 
+Library "haxe-syntax-basic"
+    Path: src/syntax/basic
+    BuildDepends: haxe-context
+    Modules: AstPre,Ops,Pos
+    Install: false
+
+Library "haxe-syntax-grammars"
+    Path: src/syntax/grammars
+    BuildDepends: sedlex,haxe-syntax-basic,menhirLib
+    Modules: Parser,ParserPre
+    Install: false
+
+Library "haxe-syntax-lexing"
+    Path: src/syntax/lexing
+    BuildDepends: haxe-syntax-grammars
+    Modules: Lexer,Token
+
 Library "haxe-syntax"
     Path: src/syntax
-    BuildDepends: sedlex,menhirLib,haxe-context,haxe-root
-    Modules: Sedlex_menhir
+    BuildDepends: menhirLib,haxe-context,haxe-root,haxe-syntax-basic,haxe-syntax-lexing,haxe-syntax-grammars
+    Modules: ParserDriver
     Install: false

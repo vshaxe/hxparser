@@ -1,5 +1,19 @@
-open ParserDriver
-open ParserDriver.Config
+open Config
+
+module Parser = Parser.Make(NullEmitter)
+
+module NullParserEngine = struct
+	module I = Parser.MenhirInterpreter
+	let s_xsymbol = SymbolPrinter.s_xsymbol
+
+	type tree =
+		| Node of I.xsymbol * tree list
+		| Leaf of Token.token_info
+end
+
+module NullParserDriver = ParserDriver.Make(NullParserEngine)
+
+open NullParserDriver
 
 module JsOfOcamlConverter = JsonConverter.TreeToJson(struct
 	type t = Js.Unsafe.any
@@ -10,7 +24,7 @@ module JsOfOcamlConverter = JsonConverter.TreeToJson(struct
 	let jnull = Js.Unsafe.inject Js.null
 	let jbool b = Js.Unsafe.inject (Js.bool b)
 	let jstring s = Js.Unsafe.inject (Js.string s)
-end)
+end) (NullParserEngine)
 
 let config = {
 	debug_flags = [];
@@ -20,33 +34,34 @@ let config = {
 
 let parse filename entrypoint s =
 	let open Sedlex_menhir in
+	let s = Js.to_string s in
 	let report_error sl =
 		Js.Unsafe.inject (Js.string "something went very wrong")
 	in
-	let s = Js.to_string s in
 	let lexbuf = create_lexbuf ~file:filename (Sedlexing.Utf8.from_string s) in
 	begin try
 		let _ = Lexer.skip_header lexbuf in
+		let tp = TokenProvider.create lexbuf in
 		begin match Js.to_string entrypoint with
 			| "file" ->
-				begin match run config lexbuf (Parser.Incremental.file lexbuf.pos) with
-				| Reject(sl,tree,blocks) -> JsOfOcamlConverter.convert tree blocks sl
-				| Accept(_,tree,blocks) -> JsOfOcamlConverter.convert tree blocks []
+				begin match run config tp (Parser.Incremental.file lexbuf.pos) with
+				| Reject(sl,tree,blocks) -> JsOfOcamlConverter.convert tree tp blocks sl
+				| Accept(_,tree,blocks) -> JsOfOcamlConverter.convert tree tp blocks []
 				end;
 			| "class_fields" ->
-				begin match run config lexbuf (Parser.Incremental.class_fields_only lexbuf.pos) with
-				| Reject(sl,tree,blocks) -> JsOfOcamlConverter.convert tree blocks sl
-				| Accept(_,tree,blocks) -> JsOfOcamlConverter.convert tree blocks []
+				begin match run config tp (Parser.Incremental.class_fields_only lexbuf.pos) with
+				| Reject(sl,tree,blocks) -> JsOfOcamlConverter.convert tree tp blocks sl
+				| Accept(_,tree,blocks) -> JsOfOcamlConverter.convert tree tp blocks []
 				end;
 			| "class_decl" ->
-				begin match run config lexbuf (Parser.Incremental.class_decl_only lexbuf.pos) with
-				| Reject(sl,tree,blocks) -> JsOfOcamlConverter.convert tree blocks sl
-				| Accept(_,tree,blocks) -> JsOfOcamlConverter.convert tree blocks []
+				begin match run config tp (Parser.Incremental.class_decl_only lexbuf.pos) with
+				| Reject(sl,tree,blocks) -> JsOfOcamlConverter.convert tree tp blocks sl
+				| Accept(_,tree,blocks) -> JsOfOcamlConverter.convert tree tp blocks []
 				end;
 			| "block_elements" ->
-				begin match run config lexbuf (Parser.Incremental.block_elements_only lexbuf.pos) with
-				| Reject(sl,tree,blocks) -> JsOfOcamlConverter.convert tree blocks sl
-				| Accept(_,tree,blocks) -> JsOfOcamlConverter.convert tree blocks []
+				begin match run config tp (Parser.Incremental.block_elements_only lexbuf.pos) with
+				| Reject(sl,tree,blocks) -> JsOfOcamlConverter.convert tree tp blocks sl
+				| Accept(_,tree,blocks) -> JsOfOcamlConverter.convert tree tp blocks []
 				end;
 			| entrypoint -> failwith ("Unknown entry point: " ^ entrypoint)
 		end

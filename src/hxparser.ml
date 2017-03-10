@@ -1,15 +1,18 @@
-open ParserDriver
-open ParserDriver.Config
+open Config
 open Json
 
-let config = ParserDriver.Config.default_config()
-let quit_early = ref true
-let output_json = ref false
-let num_files = ref 0
-let num_errors = ref 0
-let compare = ref false
+module Parser = Parser.Make(AstEmitter)
 
-let stdin_filename = "<stdin>"
+module AstParserEngine = struct
+	module I = Parser.MenhirInterpreter
+	let s_xsymbol = Obj.magic SymbolPrinter.s_xsymbol
+
+	type tree =
+		| Node of I.xsymbol * tree list
+		| Leaf of Token.token_info
+end
+
+module AstParserDriver = ParserDriver.Make(AstParserEngine)
 
 module JSONConverter = JsonConverter.TreeToJson(struct
 	open Json
@@ -21,30 +24,32 @@ module JSONConverter = JsonConverter.TreeToJson(struct
 	let jstring s = JString s
 	let jbool b = JBool b
 	let jnull = JNull
-end)
+end) (AstParserEngine)
 
-let to_haxe tree =
-	let buf = Buffer.create 0 in
-	let rec loop = function
-	| Node(_,tl) -> List.iter loop tl
-	| Leaf((tk,_,_),trivia) ->
-		List.iter (fun (tk,_,_) -> Buffer.add_string buf (Token.s_token tk)) trivia.tleading;
-		if not (List.exists (function TFImplicit | TFInserted -> true | TFSkipped -> false) trivia.tflags) then begin
-			if tk <> Tokens.EOF then
-				Buffer.add_string buf (Token.s_token tk)
-		end;
-		List.iter (fun (tk,_,_) -> Buffer.add_string buf (Token.s_token tk)) trivia.ttrailing;
-	in
-	List.iter loop tree;
-	Buffer.contents buf
+let config = Config.default_config()
+let quit_early = ref true
+let output_json = ref false
+let num_files = ref 0
+let num_errors = ref 0
+let compare = ref false
+
+let stdin_filename = "<stdin>"
 
 let load_file f =
-  let ic = open_in_bin f in
-  let n = in_channel_length ic in
-  let s = Bytes.create n in
-  really_input ic s 0 n;
-  close_in ic;
-  s
+	let ic = open_in_bin f in
+	let n = in_channel_length ic in
+	let s = Bytes.create n in
+	really_input ic s 0 n;
+	close_in ic;
+	s
+
+(*let print node =
+	let f (token,flag) = match flag with
+		| TFNormal | TFSkipped -> let (tk,_,_) = token in "(" ^ s_token tk ^ ")"
+		| TFImplicit | TFInserted -> ""
+		| TFSplit _ -> assert false
+	in
+	WorkList.LinkedNode.print f "" node*)
 
 let parse filename =
 	let open Sedlex_menhir in
@@ -68,15 +73,17 @@ let parse filename =
 	let lexbuf = create_lexbuf ~file:filename (Sedlexing.Utf8.from_channel ch) in
 	begin try
 		let _ = Lexer.skip_header lexbuf in
+		let tp = TokenProvider.create lexbuf in
 		let print_json tree blocks errors = match tree with
 			| [] -> ()
 			| tl ->
-				let js = JSONConverter.convert tree blocks errors in
+				let js = JSONConverter.convert tree tp blocks errors in
 				let buffer = Buffer.create 0 in
 				write_json (Buffer.add_string buffer) js;
 				print_endline (Buffer.contents buffer);
 		in
-		begin match run config lexbuf (Parser.Incremental.file lexbuf.pos) with
+		let open AstParserDriver in
+		begin match AstParserDriver.run config tp (Parser.Incremental.file lexbuf.pos) with
 			| Reject(sl,tree,blocks) ->
 				if !output_json then begin
 					print_json tree blocks sl;
@@ -84,20 +91,6 @@ let parse filename =
 				end;
 				report_error sl
 			| Accept(_,tree,blocks) ->
-				if !compare && config.build_parse_tree then begin
-					let s1 = to_haxe tree in
-					let s2 = load_file filename in
-					if s1 <> s2 then begin
-						let ch = open_out_bin "file_actual.txt" in
-						output_bytes ch (filename ^ "\n" ^ s1);
-						close_out ch;
-						let ch = open_out_bin "file_expected.txt" in
-						output_bytes ch (filename ^ "\n" ^ s2);
-						close_out ch;
-						prerr_endline (filename ^ " differs!");
-						exit 1;
-					end
-				end;
 				if !output_json then begin
 					print_json tree blocks [];
 					exit 0;

@@ -8,8 +8,11 @@ module type JsonApi = sig
 	val jnull : t
 end
 
-module TreeToJson (Api : JsonApi) = struct
-	open ParserDriver
+open ParserDriver
+
+module TreeToJson (Api : JsonApi) (E : Engine) = struct
+
+	open E
 	open Token
 
 	let pos_to_json p =
@@ -29,14 +32,15 @@ module TreeToJson (Api : JsonApi) = struct
 				| [] -> ()
 				| _ -> acc := ("leading",Api.jarray (List.map (fun token -> Api.jobject (jtoken token [])) trivia.tleading)) :: !acc
 			end;
-			begin match trivia.ttrailing with
+			begin match !(trivia.ttrailing) with
 				| [] -> ()
-				| _ -> acc := ("trailing",Api.jarray (List.map (fun token -> Api.jobject (jtoken token [])) trivia.ttrailing)) :: !acc
+				| l -> acc := ("trailing",Api.jarray (List.map (fun token -> Api.jobject (jtoken token [])) l)) :: !acc
 			end;
 			List.iter (function
 				| TFSkipped -> acc := ("skipped",Api.jbool true) :: !acc
 				| TFImplicit -> acc := ("implicit",Api.jbool true) :: !acc
 				| TFInserted -> acc := ("inserted",Api.jbool true) :: !acc
+				| TFNormal | TFSplit _ -> ()
 			) trivia.tflags;
 			let l = ("name",Api.jstring "token") :: jtoken token (match !acc with | [] -> [] | trivia -> ["trivia",Api.jobject trivia ]) in
 			Api.jobject l
@@ -56,13 +60,22 @@ module TreeToJson (Api : JsonApi) = struct
 					end
 			end
 
-	let convert tree blocks errors =
+	let convert tree tp blocks errors =
 		let tree = List.map to_json tree in
 		let tree = Api.jobject ["name",Api.jstring "tree";"sub",Api.jarray tree] in
+		let open WorkList in
+		let open LinkedNode in
+		let tokens = to_list (fun node ->
+			let tk,_,_ = fst node.data in
+			Api.jstring (s_token tk)
+		) tp.TokenProvider.token_cache.first.next in
+		let tokens = Api.jobject ["name",Api.jstring "tokens";"sub",Api.jarray tokens] in
+		let skipped = to_list (fun node -> Api.jint node.data) tp.TokenProvider.skipped_list.first.next in
+		let skipped = Api.jobject ["name",Api.jstring "skipped";"sub",Api.jarray skipped] in
 		let blocks = List.map (fun (p1,p2) -> Api.jobject (range_to_json p1 p2 [])) blocks in
 		let blocks = Api.jobject ["name",Api.jstring "blocks";"sub",Api.jarray blocks] in
 		let errors = List.map (fun s -> Api.jstring s) errors in
 		let errors = Api.jobject ["name",Api.jstring "errors";"sub",Api.jarray errors] in
-		let js = Api.jobject ["document",Api.jobject ["tree",tree;"blocks",blocks;"errors",errors]] in
+		let js = Api.jobject ["document",Api.jobject ["tree",tree;"tokens",tokens;"skipped",skipped;"blocks",blocks;"errors",errors]] in
 		js
 end
