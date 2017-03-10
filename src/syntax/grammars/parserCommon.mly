@@ -73,7 +73,8 @@
 	| IS { "is" }
 
 %public string:
-	| s = STRING | s = STRING2 { s }
+	| s = STRING { emit_literal_string_double_quoted s }
+	| s = STRING2 { emit_literal_string_single_quoted s }
 
 literal_string:
 	| s = string { emit_literal_string s }
@@ -88,7 +89,8 @@ literal_regex:
 	| s = REGEX { emit_literal_regex s }
 
 %public literal:
-	| literal_string | literal_int | literal_float | literal_regex { $1 }
+	| literal_int | literal_float | literal_regex { $1 }
+	| literal_string { $1 }
 
 %public %inline const:
 	| s = ident { emit_const_ident s }

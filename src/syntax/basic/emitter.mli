@@ -6,6 +6,7 @@ module type Sig = sig
 	type t_annotations
 	type t_path
 	type t_pos_path
+	type t_string_literal
 	type t_literal
 	type t_const
 
@@ -60,7 +61,9 @@ module type Sig = sig
 
 	(* Expr *)
 
-	val emit_literal_string : string -> t_literal
+	val emit_literal_string_double_quoted : string -> t_string_literal
+	val emit_literal_string_single_quoted : string -> t_string_literal
+	val emit_literal_string : t_string_literal -> t_literal
 	val emit_literal_int : string -> t_literal
 	val emit_literal_float : string -> t_literal
 	val emit_literal_regex : (string * string) -> t_literal
@@ -76,7 +79,7 @@ module type Sig = sig
 	val emit_default : t_block_element list -> pos -> t_case
 	val emit_object_field : t_object_field_name -> t_expr -> t_object_field
 	val emit_object_field_name_ident : string -> pos -> t_object_field_name
-	val emit_object_field_name_string : string -> pos -> t_object_field_name
+	val emit_object_field_name_string : t_string_literal -> pos -> t_object_field_name
 	val emit_unknown : pos -> t_expr
 
 	val emit_block_element_var : t_var_declaration list -> pos -> t_block_element

@@ -6,6 +6,7 @@ type t_metadata_entry = metadata_entry
 type t_annotations = string option * metadata
 type t_path = string list
 type t_pos_path = placed_name list
+type t_string_literal = string
 type t_literal = constant
 type t_const = constant
 
@@ -66,6 +67,12 @@ let emit_function name tl args cto e =
 
 let emit_annotations so metadata =
 	(so,metadata)
+
+let emit_literal_string_double_quoted s =
+	s
+
+let emit_literal_string_single_quoted s =
+	s
 
 let emit_literal_string s =
 	String s

@@ -3,6 +3,7 @@ type t_metadata_entry = unit
 type t_annotations = unit
 type t_path = unit
 type t_pos_path = unit
+type t_string_literal = unit
 type t_literal = unit
 type t_const = unit
 
@@ -53,6 +54,10 @@ let emit_metadata_entry_with_args meta el p = ()
 let emit_function name tl args cto e = ()
 
 let emit_annotations so metadata = ()
+
+let emit_literal_string_double_quoted s = ()
+
+let emit_literal_string_single_quoted s = ()
 
 let emit_literal_string s = ()
 

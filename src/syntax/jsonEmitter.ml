@@ -10,6 +10,9 @@ end
 
 module EnumApi = struct
 	type enum_api =
+		| DoubleQuote
+		| SingleQuote
+
 		| NIdent
 		| NString
 
@@ -124,6 +127,9 @@ module EnumApi = struct
 		| AbstractDecl
 
 	let info = function
+		| DoubleQuote -> 0,"DoubleQuote"
+		| SingleQuote -> 1,"SingleQuote"
+
 		| NIdent -> 0,"NIdent"
 		| NString -> 1,"NString"
 
@@ -246,6 +252,7 @@ module JsonEmitter(Api : JsonApi) = struct
 	type t_annotations = Api.t
 	type t_path = Api.t
 	type t_pos_path = Api.t
+	type t_string_literal = Api.t
 	type t_literal = Api.t
 	type t_const = Api.t
 
@@ -330,8 +337,14 @@ module JsonEmitter(Api : JsonApi) = struct
 			"metadata",arr metadata;
 		]
 
+	let emit_literal_string_double_quoted s =
+		enum "StringToken" DoubleQuote [str s]
+
+	let emit_literal_string_single_quoted s =
+		enum "StringToken" SingleQuote [str s]
+
 	let emit_literal_string s =
-		enum "Literal" PLiteralString [str s]
+		enum "Literal" PLiteralString [s]
 
 	let emit_literal_int s =
 		enum "Literal" PLiteralInt [str s]
@@ -387,7 +400,7 @@ module JsonEmitter(Api : JsonApi) = struct
 		enum "ObjectFieldName" NIdent [str s]
 
 	let emit_object_field_name_string s p =
-		enum "ObjectFieldName" NString [str s]
+		enum "ObjectFieldName" NString [s]
 
 	let emit_unknown p = Api.jnull
 

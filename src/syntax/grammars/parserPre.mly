@@ -5,6 +5,8 @@
 	let emit_true p = EConst (Ident "true"),p
 	let emit_false p = EConst (Ident "false"),p
 	let emit_this p = EConst (Ident "this"),p
+	let emit_literal_string_double_quoted s = s
+	let emit_literal_string_single_quoted s = s
 	let emit_literal_string s = String s
 	let emit_literal_regex (s1,s2) = Regexp(s1,s2)
 	let emit_literal_int s = Int s
