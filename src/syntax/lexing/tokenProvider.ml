@@ -35,34 +35,28 @@ let insert_token tp wtoken =
 	tp.inserted_tokens <- wtoken :: tp.inserted_tokens
 
 let on_shift tp (token,flag,skipped) =
-	let trail = ref [] in
 	let cache = tp.token_cache in
 	let skip () =
 		let skipped = tp.skipped + skipped in
 		tp.skipped <- 0;
 		WorkList.push tp.skipped_list skipped;
-		WorkList.advance_by cache (fun node -> fst node.next.data) skipped
+		ignore(WorkList.advance_by cache (fun node -> fst node.next.data) skipped)
 	in
-	let leading = match flag with
+	match flag with
 		| TFNormal ->
-			let leading = skip() in
+			skip();
 			ignore(advance cache);
-			leading;
 		| TFSkipped ->
 			assert false;
 		| TFInserted | TFImplicit ->
-			let leading = skip() in
+			skip();
 			insert cache (token,flag);
 			ignore(advance cache);
-			leading;
 		| TFSplit(original,token2) ->
-			let leading = skip() in
+			skip();
 			(WorkList.current cache).data <- (token,snd (WorkList.current cache).data);
 			ignore(advance cache);
-			insert cache (token2,TFNormal);
-			leading;
-	in
-	{tleading = leading; ttrailing = trail; tflags = [flag]}
+			insert cache (token2,TFNormal)
 
 let skip tp (_,_,skipped) =
 	tp.skipped <- tp.skipped + skipped + 1

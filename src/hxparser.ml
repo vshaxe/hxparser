@@ -20,15 +20,11 @@ module Parser = Parser.Make(Emitter)
 module ParserEngine = struct
 	module I = Parser.MenhirInterpreter
 	let s_xsymbol = Obj.magic SymbolPrinter.s_xsymbol
-
-	type tree =
-		| Node of I.xsymbol * tree list
-		| Leaf of Token.token_info
 end
 
 module ParserDriver = ParserDriver.Make(ParserEngine)
 
-module JSONConverter = JsonConverter.TreeToJson(JSON) (ParserEngine)
+module JSONConverter = JsonConverter.TreeToJson(JSON)
 
 let config = Config.default_config()
 let quit_early = ref true
@@ -86,9 +82,9 @@ let parse filename =
 		in
 		let open ParserDriver in
 		begin match ParserDriver.run config tp (Parser.Incremental.file lexbuf.pos) with
-			| Reject(sl,tree,blocks) ->
+			| Reject(sl,blocks) ->
 				assert false
-			| Accept((pack,decls),tree,blocks) ->
+			| Accept((pack,decls),blocks) ->
 				if !output_json then begin
 					print_json (Emitter.emit_file pack decls) blocks [];
 					exit 0;

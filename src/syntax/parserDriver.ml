@@ -5,10 +5,6 @@ open TokenProvider
 module type Engine = sig
 	module I : MenhirLib.IncrementalEngine.EVERYTHING with type token = token
 	val s_xsymbol : I.xsymbol -> string
-
-	type tree =
-		| Node of I.xsymbol * tree list
-		| Leaf of token_info
 end
 
 module Make (E : Engine) = struct
@@ -22,7 +18,6 @@ module Make (E : Engine) = struct
 			checkpoint : 'a I.checkpoint;
 			last_offer : work_token;
 			last_shift : placed_token;
-			tree : tree list;
 		}
 
 		let create checkpoint =
@@ -32,14 +27,13 @@ module Make (E : Engine) = struct
 				last_offer = (dummy_token,TFNormal,0);
 				last_shift = dummy_token;
 				recover_state = state;
-				tree = [];
 			} in
 			state
 	end
 
 	type 'a result =
-		| Accept of 'a * tree list * range list
-		| Reject of string list * tree list * range list
+		| Accept of 'a * range list
+		| Reject of string list * range list
 
 	let print_position = Pos.Position.print
 
@@ -64,10 +58,7 @@ module Make (E : Engine) = struct
 		if has_debug config DShift then begin
 			let ((tk,_,_)) = token in prerr_endline (Printf.sprintf "[SHIFT ] %s" (s_token tk));
 		end;
-		let state =
-			if config.build_parse_tree then {state with tree = Leaf(token,TokenProvider.on_shift tp state.last_offer) :: state.tree}
-			else state
-		in
+		TokenProvider.on_shift tp state.last_offer;
 		state,token
 
 	let rec input_needed (config,tp) state =
@@ -80,7 +71,7 @@ module Make (E : Engine) = struct
 			if has_debug config DAccept then begin
 				prerr_endline "[ACCEPT]"
 			end;
-			Accept(v,state.tree,tp.TokenProvider.blocks)
+			Accept(v,tp.TokenProvider.blocks)
 		| I.InputNeeded _ ->
 			input_needed (config,tp) state
 		| I.Shifting _ ->
@@ -93,19 +84,6 @@ module Make (E : Engine) = struct
 				| rhs -> prerr_endline (Printf.sprintf "[REDUCE] %s <- %s" (E.s_xsymbol (I.lhs production)) (String.concat " " (List.map E.s_xsymbol rhs)));
 			end;
 			let state = {state with checkpoint = I.resume state.checkpoint} in
-			let state = if config.build_parse_tree then begin
-				let l = List.length (I.rhs production) in
-				let rec loop i acc nodes =
-					if i >= l then acc,nodes
-					else match nodes with
-						| hd :: tl -> loop (i + 1) (hd :: acc) tl
-						| [] -> assert false
-				in
-				let nodes1,nodes2 = loop 0 [] state.tree in
-				{state with tree = ((Node((I.lhs production),nodes1)) :: nodes2)}
-			end else
-				state
-			in
 			loop (config,tp) state
 		| I.HandlingError env ->
 			let insert token allowed p =
@@ -167,13 +145,10 @@ module Make (E : Engine) = struct
 				messages := (Printf.sprintf "[REJECT] %s" (print_token (let token,_,_ = state.last_offer in token))) :: !messages;
 			end else
 				messages := "[REJECT]" :: !messages;
-			let state =
-				(* In recover mode we only fail if the last offer was EOF. Since that wasn't shifted,
-				let's append it to the rejected tree. *)
-				if config.recover then fst (shift (config,tp) state)
-				else state
-			in
-			Reject(!messages,List.rev state.tree,tp.TokenProvider.blocks)
+			(* In recover mode we only fail if the last offer was EOF. Since that wasn't shifted,
+			let's append it to the rejected tree. *)
+			if config.recover then ignore(shift (config,tp) state);
+			Reject(!messages,tp.TokenProvider.blocks)
 
 	and start (config,tp) checkpoint =
 		if has_debug config DStart then begin

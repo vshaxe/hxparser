@@ -18,17 +18,13 @@ module Parser = Parser.Make(Emitter)
 module ParserEngine = struct
 	module I = Parser.MenhirInterpreter
 	let s_xsymbol = Obj.magic SymbolPrinter.s_xsymbol
-
-	type tree =
-		| Node of I.xsymbol * tree list
-		| Leaf of Token.token_info
 end
 
 module ParserDriver = ParserDriver.Make(ParserEngine)
 
 open ParserDriver
 
-module JsOfOcamlConverter = JsonConverter.TreeToJson (JSON) (ParserEngine)
+module JsOfOcamlConverter = JsonConverter.TreeToJson (JSON)
 
 let config = {
 	debug_flags = [];
@@ -49,8 +45,8 @@ let parse filename entrypoint s =
 		begin match Js.to_string entrypoint with
 			| "file" ->
 				begin match run config tp (Parser.Incremental.file lexbuf.pos) with
-				| Reject(sl,tree,blocks) -> assert false
-				| Accept((pack,decls),tree,blocks) -> JsOfOcamlConverter.convert (Emitter.emit_file pack decls) tp blocks []
+				| Reject(sl,blocks) -> assert false
+				| Accept((pack,decls),blocks) -> JsOfOcamlConverter.convert (Emitter.emit_file pack decls) tp blocks []
 				end;
 			(*| "class_fields" ->
 				begin match run config tp (Parser.Incremental.class_fields_only lexbuf.pos) with

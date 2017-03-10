@@ -15,7 +15,7 @@ val next_token : t -> work_token
 
 val insert_token : t -> work_token -> unit
 
-val on_shift : t -> work_token -> trivia
+val on_shift : t -> work_token -> unit
 
 val skip : t -> work_token -> unit
 
