@@ -19,7 +19,6 @@ XOCamlbuildExtraArgs:
     -use-menhir
     -yaccflag --infer
     -yaccflag --table
-    -yaccflag --inspection
     -yaccflag --unused-tokens
     -yaccflag --explain
     -yaccflag --log-automaton -yaccflag 1

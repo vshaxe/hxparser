@@ -15,12 +15,7 @@ module Emitter = JsonEmitter.JsonEmitter(JSON)
 
 module Parser = Parser.Make(Emitter)
 
-module ParserEngine = struct
-	module I = Parser.MenhirInterpreter
-	let s_xsymbol = Obj.magic SymbolPrinter.s_xsymbol
-end
-
-module ParserDriver = ParserDriver.Make(ParserEngine)
+module ParserDriver = ParserDriver.Make(Parser.MenhirInterpreter)
 
 open ParserDriver
 

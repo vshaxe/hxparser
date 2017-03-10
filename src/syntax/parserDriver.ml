@@ -2,14 +2,8 @@ open Tokens
 open Token
 open TokenProvider
 
-module type Engine = sig
-	module I : MenhirLib.IncrementalEngine.EVERYTHING with type token = token
-	val s_xsymbol : I.xsymbol -> string
-end
+module Make (I : MenhirLib.IncrementalEngine.INCREMENTAL_ENGINE with type token = token) = struct
 
-module Make (E : Engine) = struct
-
-	open E
 	module M = MenhirLib.General
 
 	module State = struct
@@ -79,10 +73,6 @@ module Make (E : Engine) = struct
 			let state = {state with checkpoint = I.resume state.checkpoint; last_shift = token} in
 			loop (config,tp) state
 		| I.AboutToReduce(_,production) ->
-			if has_debug config DReduce then begin match I.rhs production with
-				| [] -> ()
-				| rhs -> prerr_endline (Printf.sprintf "[REDUCE] %s <- %s" (E.s_xsymbol (I.lhs production)) (String.concat " " (List.map E.s_xsymbol rhs)));
-			end;
 			let state = {state with checkpoint = I.resume state.checkpoint} in
 			loop (config,tp) state
 		| I.HandlingError env ->
