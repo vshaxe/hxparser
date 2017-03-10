@@ -69,13 +69,16 @@ module TreeToJson (Api : JsonApi) (E : Engine) = struct
 			let tk,_,_ = fst node.data in
 			Api.jstring (s_token tk)
 		) tp.TokenProvider.token_cache.first.next in
-		let tokens = Api.jobject ["name",Api.jstring "tokens";"sub",Api.jarray tokens] in
 		let skipped = to_list (fun node -> Api.jint node.data) tp.TokenProvider.skipped_list.first.next in
-		let skipped = Api.jobject ["name",Api.jstring "skipped";"sub",Api.jarray skipped] in
 		let blocks = List.map (fun (p1,p2) -> Api.jobject (range_to_json p1 p2 [])) blocks in
-		let blocks = Api.jobject ["name",Api.jstring "blocks";"sub",Api.jarray blocks] in
 		let errors = List.map (fun s -> Api.jstring s) errors in
 		let errors = Api.jobject ["name",Api.jstring "errors";"sub",Api.jarray errors] in
-		let js = Api.jobject ["document",Api.jobject ["tree",tree;"tokens",tokens;"skipped",skipped;"blocks",blocks;"errors",errors]] in
+		let js = Api.jobject ["document",Api.jobject [
+			"tree",tree;
+			"tokens",Api.jarray tokens;
+			"skipped",Api.jarray skipped;
+			"blocks",Api.jarray blocks;
+			"errors",errors
+		]] in
 		js
 end
