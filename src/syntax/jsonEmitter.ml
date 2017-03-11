@@ -290,13 +290,15 @@ module JsonEmitter(Api : JsonApi.JsonApi) = struct
 		| None -> Api.jnull
 		| Some t -> t
 
+	let tokn = Api.jint 0 (* We just need something that's not null *)
 	let tok = Api.jnull
 	let arr = Api.jarray
 
-	let arrsep l = match l with
+	let arrsep b l = match l with
 		| hd :: tl -> Api.jobject [
 			"arg",hd;
-			"args",Api.jarray (List.map (fun j -> Api.jobject ["comma",tok;"arg",j]) tl)
+			"args",Api.jarray (List.map (fun j -> Api.jobject ["comma",tok;"arg",j]) tl);
+			"comma",if b then tokn else tok;
 		]
 		| [] -> Api.jnull
 
@@ -308,7 +310,7 @@ module JsonEmitter(Api : JsonApi.JsonApi) = struct
 
 	let type_parameters l = match l with
 		| [] -> Api.jnull
-		| _ -> Api.jobject ["params",arrsep l]
+		| _ -> Api.jobject ["params",arrsep false l]
 
 	let emit_path ident idents =
 		Api.jobject [
@@ -323,12 +325,12 @@ module JsonEmitter(Api : JsonApi.JsonApi) = struct
 		enum "Metadata" Simple [tok]
 
 	let emit_metadata_entry_with_args meta el p =
-		enum "Metadata" WithArgs [tok;arrsep el;tok]
+		enum "Metadata" WithArgs [tok;arrsep false el;tok]
 
 	let emit_function name tl args cto e =
 		Api.jobject [
 			"params",type_parameters tl;
-			"args",arrsep args;
+			"args",arrsep false args;
 			"typeHint",opt cto;
 			"expr",e
 		]
@@ -365,7 +367,7 @@ module JsonEmitter(Api : JsonApi.JsonApi) = struct
 
 	let emit_call_args el =
 		Api.jobject [
-			"args",arrsep el;
+			"args",arrsep false el;
 		]
 
 	let emit_assignment e =
@@ -387,7 +389,7 @@ module JsonEmitter(Api : JsonApi.JsonApi) = struct
 		]
 
 	let emit_case el1 eo el2 p =
-		enum "Case" Case [tok;arrsep el1;opt eo;tok;arr el2]
+		enum "Case" Case [tok;arrsep false el1;opt eo;tok;arr el2]
 
 	let emit_default el p =
 		enum "Case" Default [tok;tok;arr el]
@@ -407,7 +409,7 @@ module JsonEmitter(Api : JsonApi.JsonApi) = struct
 	let emit_unknown p = Api.jnull
 
 	let emit_block_element_var vl p =
-		enum "BlockElement" Var [tok;arrsep vl;tok]
+		enum "BlockElement" Var [tok;arrsep false vl;tok]
 
 	let emit_block_element_inline_function f p =
 		enum "BlockElement" InlineFunction [tok;tok;f;tok]
@@ -470,8 +472,8 @@ module JsonEmitter(Api : JsonApi.JsonApi) = struct
 	let emit_untyped_expr e p =
 		enum "Expr" EUntyped [tok;e]
 
-	let emit_object_decl_expr fl p =
-		enum "Expr" EObjectDecl [tok;arrsep fl;tok]
+	let emit_object_decl_expr fl b p =
+		enum "Expr" EObjectDecl [tok;arrsep b fl;tok]
 
 	let emit_unsafe_cast_expr e p =
 		enum "Expr" EUnsafeCast [tok;e]
@@ -491,8 +493,8 @@ module JsonEmitter(Api : JsonApi.JsonApi) = struct
 	let emit_is_expr e path p_is p =
 		enum "Expr" EIs [tok;e;tok;path;tok]
 
-	let emit_array_decl_expr el p =
-		enum "Expr" EArrayDecl [tok;arrsep el;tok]
+	let emit_array_decl_expr el b p =
+		enum "Expr" EArrayDecl [tok;arrsep b el;tok]
 
 	let emit_function_expr f p =
 		enum "Expr" EFunction [tok;f]
@@ -565,8 +567,8 @@ module JsonEmitter(Api : JsonApi.JsonApi) = struct
 	let emit_type_path_parameter_complex_type ct =
 		enum "TypePathParameter" Type [ct]
 
-	let emit_type_path_parameter_bracket el p =
-		enum "TypePathParameter" ArrayExpr [tok;arrsep el;tok]
+	let emit_type_path_parameter_bracket el b p =
+		enum "TypePathParameter" ArrayExpr [tok;arrsep b el;tok]
 
 	let emit_type_path_parameter_literal lit p =
 		enum "TypePathParameter" Literal [lit]
@@ -576,7 +578,7 @@ module JsonEmitter(Api : JsonApi.JsonApi) = struct
 	let emit_function_argument annotations optq name cto eo =
 		Api.jobject [
 			"annotations",annotations;
-			"questionMark",(match optq with None -> Api.jnull | Some _ -> Api.jint 0); (* TODO: This is stupid *)
+			"questionMark",(match optq with None -> Api.jnull | Some _ -> tokn); (* TODO: This is stupid *)
 			"name",str (fst name);
 			"typeHint",opt cto;
 			"assignment",opt eo
@@ -623,7 +625,7 @@ module JsonEmitter(Api : JsonApi.JsonApi) = struct
 
 	let emit_enum_field_arg optq name ct =
 		Api.jobject [
-			"questionMark",(match optq with None -> Api.jnull | Some _ -> Api.jint 0); (* TODO: This is stupid *)
+			"questionMark",(match optq with None -> Api.jnull | Some _ -> tokn); (* TODO: This is stupid *)
 			"name",str name;
 			"typeHint",ct
 		]
@@ -633,15 +635,15 @@ module JsonEmitter(Api : JsonApi.JsonApi) = struct
 			"annotations",annotations;
 			"name",str (fst name);
 			"params",type_parameters tl;
-			"args",arrsep args;
+			"args",arrsep false args;
 			"typeHint",opt cto;
 		]
 
 	let emit_anonymous_class_fields fields =
 		enum "AnonymousStructureFields" ClassNotation [arr fields]
 
-	let emit_anonymous_type_fields fields =
-		enum "AnonymousStructureFields" ShortNotation [arrsep fields]
+	let emit_anonymous_type_fields fields b =
+		enum "AnonymousStructureFields" ShortNotation [arrsep b fields]
 
 	let emit_anonymous_type_field optq name ct p =
 		Api.jobject [
@@ -659,7 +661,7 @@ module JsonEmitter(Api : JsonApi.JsonApi) = struct
 		enum "Constraints" CSingle [tok;ct]
 
 	let emit_constraints_multiple ctl =
-		enum "Constraints" CMultiple [tok;tok;arrsep ctl;tok]
+		enum "Constraints" CMultiple [tok;tok;arrsep false ctl;tok]
 
 	let emit_type_decl_parameter annotations name constraints =
 		Api.jobject [

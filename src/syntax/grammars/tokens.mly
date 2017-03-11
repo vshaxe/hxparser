@@ -38,7 +38,7 @@
 %left ARROW
 %right QUESTIONMARK
 %right POPEN BKOPEN BROPEN
-%nonassoc NONDOT BRCLOSE
+%nonassoc NONDOT
 %left DOT_IDENT COLON DOT
 
 %%

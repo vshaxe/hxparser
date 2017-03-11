@@ -133,7 +133,7 @@ let emit_while_expr e1 e2 p = ()
 
 let emit_untyped_expr e p = ()
 
-let emit_object_decl_expr fl p = ()
+let emit_object_decl_expr fl b p = ()
 
 let emit_unsafe_cast_expr e p = ()
 
@@ -147,7 +147,7 @@ let emit_typecheck_expr e ct p = ()
 
 let emit_is_expr e path p_is p = ()
 
-let emit_array_decl_expr el p = ()
+let emit_array_decl_expr el b p = ()
 
 let emit_function_expr f p = ()
 
@@ -191,7 +191,7 @@ let emit_complex_type_function ct1 ct2 p = ()
 
 let emit_type_path_parameter_complex_type ct = ()
 
-let emit_type_path_parameter_bracket el p = ()
+let emit_type_path_parameter_bracket el b p = ()
 
 let emit_type_path_parameter_literal lit p = ()
 
@@ -222,7 +222,7 @@ let emit_enum_field_arg opt name ct = ()
 let emit_enum_field annotations name tl args cto p = ()
 
 let emit_anonymous_class_fields fields = ()
-let emit_anonymous_type_fields fields = ()
+let emit_anonymous_type_fields fields b = ()
 
 let emit_anonymous_type_field opt name ct p = ()
 

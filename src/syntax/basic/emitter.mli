@@ -104,14 +104,14 @@ module type Sig = sig
 	val emit_for_expr : t_expr -> t_expr -> pos -> t_expr
 	val emit_while_expr : t_expr -> t_expr -> pos -> t_expr
 	val emit_untyped_expr : t_expr -> pos -> t_expr
-	val emit_object_decl_expr : t_object_field list -> pos -> t_expr
+	val emit_object_decl_expr : t_object_field list -> bool -> pos -> t_expr
 	val emit_unsafe_cast_expr : t_expr -> pos -> t_expr
 	val emit_safe_cast_expr : t_expr -> t_complex_type -> pos -> t_expr
 	val emit_new_expr : t_type_path -> t_call_args -> pos -> t_expr
 	val emit_parenthesis_expr : t_expr -> pos -> t_expr
 	val emit_typecheck_expr : t_expr -> t_complex_type -> pos -> t_expr
 	val emit_is_expr : t_expr -> t_type_path -> pos -> pos -> t_expr
-	val emit_array_decl_expr : t_expr list -> pos -> t_expr
+	val emit_array_decl_expr : t_expr list -> bool -> pos -> t_expr
 	val emit_function_expr : t_function -> pos -> t_expr
 	val emit_unary_prefix_expr : Ops.unop -> t_expr -> pos -> t_expr
 	val emit_field_expr : t_expr -> string -> pos -> t_expr
@@ -139,7 +139,7 @@ module type Sig = sig
 	val emit_complex_type_function : t_complex_type -> t_complex_type -> pos -> t_complex_type
 
 	val emit_type_path_parameter_complex_type : t_complex_type -> t_type_path_parameter_kind
-	val emit_type_path_parameter_bracket : t_expr list -> pos -> t_type_path_parameter_kind
+	val emit_type_path_parameter_bracket : t_expr list -> bool -> pos -> t_type_path_parameter_kind
 	val emit_type_path_parameter_literal : t_literal -> pos -> t_type_path_parameter_kind
 
 	(* Fields *)
@@ -166,7 +166,7 @@ module type Sig = sig
 	val emit_enum_field : t_annotations -> string t_pos -> t_type_decl_parameter list -> t_enum_field_arg list -> t_complex_type option -> pos -> t_enum_field
 
 	val emit_anonymous_class_fields : t_class_field list -> t_anonymous_type_fields
-	val emit_anonymous_type_fields : t_anonymous_field list -> t_anonymous_type_fields
+	val emit_anonymous_type_fields : t_anonymous_field list -> bool -> t_anonymous_type_fields
 	val emit_anonymous_type_field : unit option -> string t_pos -> t_complex_type -> pos -> t_anonymous_field
 
 	(* Type declaration *)

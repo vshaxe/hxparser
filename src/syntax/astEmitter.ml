@@ -187,7 +187,7 @@ let emit_while_expr e1 e2 p =
 let emit_untyped_expr e p =
 	EUntyped e,p
 
-let emit_object_decl_expr fl p =
+let emit_object_decl_expr fl b p =
 	EObjectDecl fl,p
 
 let emit_unsafe_cast_expr e p =
@@ -211,7 +211,7 @@ let emit_is_expr e path p_is p =
 	let e2 = expr_of_type_path (t.tpackage,t.tname) t_p in
 	ECall(e_is,[e;e2]),p
 
-let emit_array_decl_expr el p =
+let emit_array_decl_expr el b p =
 	EArrayDecl el,p
 
 let emit_function_expr f p =
@@ -277,7 +277,7 @@ let emit_complex_type_function ct1 ct2 p =
 let emit_type_path_parameter_complex_type ct =
 	TPType ct
 
-let emit_type_path_parameter_bracket el p =
+let emit_type_path_parameter_bracket el b p =
 	TPExpr (EArrayDecl el,p)
 
 let emit_type_path_parameter_literal lit p =
@@ -355,7 +355,7 @@ let emit_enum_field annotations name tl args cto p =
 	ef
 
 let emit_anonymous_class_fields fields = fields
-let emit_anonymous_type_fields fields = fields
+let emit_anonymous_type_fields fields b = fields
 
 let emit_anonymous_type_field opt name ct p =
 	let cff = {

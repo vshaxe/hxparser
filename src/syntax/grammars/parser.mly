@@ -102,12 +102,13 @@ func:
 	}
 
 array_elements_next:
-	| { [] }
-	| COMMA; el = array_elements { el }
+	| { [],false }
+	| COMMA { [],true }
+	| COMMA; e1 = expr; el = array_elements_next { e1 :: (fst el),snd el }
 
 array_elements:
-	| { [] }
-	| e1 = expr; el = array_elements_next { e1 :: el }
+	| { [],false }
+	| e1 = expr; el = array_elements_next { e1 :: (fst el),snd el }
 
 object_field_name:
 	| name = dollar_ident { emit_object_field_name_ident name (mk $startpos $endpos) }
@@ -119,12 +120,12 @@ object_field:
 	}
 
 object_fields_next:
-	| { [] }
-	| COMMA; fl = object_fields { fl }
+	| { [],false }
+	| COMMA { [],true }
+	| COMMA; f = object_field; fl = object_fields_next { f :: (fst fl),snd fl }
 
 object_fields:
-	| %prec LOWEST { [] }
-	| f = object_field; fl = object_fields_next { f :: fl }
+	| f = object_field; fl = object_fields_next { f :: (fst fl),snd fl }
 
 macro_expr_type_hint:
 	| type_hint { emit_unknown (mk $startpos $endpos) }
@@ -223,7 +224,7 @@ expr_untyped:
 	| UNTYPED; e1 = expr { emit_untyped_expr e1 (mk $startpos $endpos) }
 
 expr_object_declaration:
-	| BROPEN; fl = object_fields; BRCLOSE { emit_object_decl_expr fl (mk $startpos $endpos) }
+	| BROPEN; fl = object_fields; BRCLOSE { emit_object_decl_expr (fst fl) (snd fl) (mk $startpos $endpos) }
 
 expr_unsafe_cast:
 	| CAST; e1 = expr { emit_unsafe_cast_expr e1 (mk $startpos $endpos) }
@@ -244,7 +245,7 @@ expr_is:
 	| POPEN; e1 = expr; is = pos(IS); tp = type_path; PCLOSE { emit_is_expr e1 tp (snd is) (mk $startpos $endpos) }
 
 expr_array_declaration:
-	| BKOPEN; el = array_elements; BKCLOSE { emit_array_decl_expr el (mk $startpos $endpos) }
+	| BKOPEN; el = array_elements; BKCLOSE { emit_array_decl_expr (fst el) (snd el) (mk $startpos $endpos) }
 
 expr_function:
 	| FUNCTION; f = func { emit_function_expr f (mk $startpos $endpos) }
@@ -324,16 +325,17 @@ anonymous_type_field:
 	}
 
 anonymous_type_fields_short_next:
-	| { [] }
-	| COMMA; fl = anonymous_type_fields_short { fl }
+	| { [],false }
+	| COMMA { [],true }
+	| COMMA; f = anonymous_type_field; fl = anonymous_type_fields_short_next { f :: (fst fl),snd fl }
 
 anonymous_type_fields_short:
-	| { [] }
-	| f = anonymous_type_field; fl = anonymous_type_fields_short_next { f :: fl }
+	| { [],false }
+	| f = anonymous_type_field; fl = anonymous_type_fields_short_next { f :: (fst fl),snd fl }
 
 anonymous_type_fields:
 	| l = class_field+ { emit_anonymous_class_fields l }
-	| l = anonymous_type_fields_short { emit_anonymous_type_fields l }
+	| l = anonymous_type_fields_short { emit_anonymous_type_fields (fst l) (snd l) }
 
 complex_type_parent:
 	| POPEN; ct = complex_type; PCLOSE { emit_complex_type_parent ct (mk $startpos $endpos) }
@@ -362,7 +364,7 @@ complex_type:
 	| complex_type_path | complex_type_function { $1 }
 
 type_path_parameter_bracket:
-	| BKOPEN; el = array_elements; BKCLOSE { emit_type_path_parameter_bracket el (mk $startpos $endpos) }
+	| BKOPEN; el = array_elements; BKCLOSE { emit_type_path_parameter_bracket (fst el) (snd el) (mk $startpos $endpos) }
 
 type_path_parameter_complex_type:
 	| ct = complex_type { emit_type_path_parameter_complex_type ct }
