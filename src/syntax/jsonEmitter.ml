@@ -690,10 +690,13 @@ module JsonEmitter(Api : JsonApi.JsonApi) = struct
 		enum "ImportMode" INormal []
 
 	let emit_import path mode p =
-		enum "Decl" ImportDecl [tok;path;mode;tok]
+		enum "Decl" ImportDecl [Api.jobject [
+			"path",path;
+			"mode",mode;
+		]]
 
 	let emit_using path p =
-		enum "Decl" UsingDecl [tok;path;tok]
+		enum "Decl" UsingDecl [Api.jobject ["path",path]]
 
 	let emit_class flags name tl rl l =
 		Api.jobject [
@@ -703,16 +706,40 @@ module JsonEmitter(Api : JsonApi.JsonApi) = struct
 		]
 
 	let emit_class_decl annotations flags c p =
-		enum "Decl" ClassDecl [annotations;arr flags;c]
+		enum "Decl" ClassDecl [Api.jobject [
+			"annotations",annotations;
+			"flags",arr flags;
+			"decl",c
+		]]
 
 	let emit_enum_decl annotations flags name tl l p =
-		enum "Decl" EnumDecl [annotations;arr flags;tok;str (fst name);arropt tl;tok;arr l;tok]
+		enum "Decl" EnumDecl [Api.jobject [
+			"annotations",annotations;
+			"flags",arr flags;
+			"name",str (fst name);
+			"params",arropt tl;
+			"fields",arr l
+		]]
 
 	let emit_typedef_decl annotations flags name tl ct p =
-		enum "Decl" TypedefDecl [annotations;arr flags;tok;str (fst name);arropt tl;tok;ct]
+		enum "Decl" TypedefDecl [Api.jobject [
+			"annotations",annotations;
+			"flags",arr flags;
+			"name",str (fst name);
+			"params",arropt tl;
+			"type",ct
+		]]
 
 	let emit_abstract_decl annotations flags name tl st rl l p =
-		enum "Decl" AbstractDecl [annotations;arr flags;tok;str (fst name);arropt tl;opt st;arr rl;tok;arr l;tok]
+		enum "Decl" AbstractDecl [Api.jobject [
+			"annotations",annotations;
+			"flags",arr flags;
+			"name",str (fst name);
+			"params",arropt tl;
+			"underlyingType",opt st;
+			"relations",arr rl;
+			"fields",arr l
+		]]
 
 	let emit_package path =
 		Api.jobject [
