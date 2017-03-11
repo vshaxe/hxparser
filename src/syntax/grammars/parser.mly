@@ -3,7 +3,7 @@
 %start <Emitter.t_package option * Emitter.t_decl list> file
 %start <Emitter.t_expr> expr_only
 %start <Emitter.t_class_field list> class_fields_only
-%start <Emitter.t_decl> class_decl_only
+%start <Emitter.t_decl list> decls_only
 %start <Emitter.t_block_element list> block_elements_only
 %start <unit> unused
 
@@ -560,10 +560,8 @@ expr_only:
 class_fields_only:
 	| cff = class_field+; EOF { cff }
 
-class_decl_only:
-	| c = class_decl2; EOF {
-		emit_class_decl (emit_annotations None []) [] c (mk $startpos $endpos)
-	}
+decls_only:
+	| decl = decl+; EOF { decl }
 
 block_elements_only:
 	| el = block_element+; EOF { el }

@@ -37,28 +37,23 @@ let parse filename entrypoint s =
 	begin try
 		let _ = Lexer.skip_header lexbuf in
 		let tp = TokenProvider.create lexbuf in
+		let run entrypoint emit =
+			begin match run config tp (entrypoint lexbuf.pos) with
+			| Reject sl -> assert false
+			| Accept result -> JsOfOcamlConverter.convert (emit result) tp []
+			end;
+		in
 		begin match Js.to_string entrypoint with
 			| "file" ->
-				begin match run config tp (Parser.Incremental.file lexbuf.pos) with
-				| Reject sl -> assert false
-				| Accept (pack,decls) -> JsOfOcamlConverter.convert (Emitter.emit_file pack decls) tp []
-				end;
-			(*| "class_fields" ->
-				begin match run config tp (Parser.Incremental.class_fields_only lexbuf.pos) with
-				| Reject(sl,tree,blocks) -> JsOfOcamlConverter.convert tree tp blocks sl
-				| Accept(_,tree,blocks) -> JsOfOcamlConverter.convert tree tp blocks []
-				end;
-			| "class_decl" ->
-				begin match run config tp (Parser.Incremental.class_decl_only lexbuf.pos) with
-				| Reject(sl,tree,blocks) -> JsOfOcamlConverter.convert tree tp blocks sl
-				| Accept(_,tree,blocks) -> JsOfOcamlConverter.convert tree tp blocks []
-				end;
+				run Parser.Incremental.file (fun (pack,decls) -> Emitter.emit_file pack decls)
+			| "decls" ->
+				run Parser.Incremental.decls_only JSON.jarray
+			| "class_fields" ->
+				run Parser.Incremental.class_fields_only JSON.jarray
 			| "block_elements" ->
-				begin match run config tp (Parser.Incremental.block_elements_only lexbuf.pos) with
-				| Reject(sl,tree,blocks) -> JsOfOcamlConverter.convert tree tp blocks sl
-				| Accept(_,tree,blocks) -> JsOfOcamlConverter.convert tree tp blocks []
-				end;*)
-			| entrypoint -> failwith ("Unknown entry point: " ^ entrypoint)
+				run Parser.Incremental.block_elements_only JSON.jarray
+			| entrypoint ->
+				failwith ("Unknown entry point: " ^ entrypoint)
 		end
 	with exc ->
 		report_error [Printexc.to_string exc];
