@@ -67,7 +67,12 @@ module TreeToJson (Api : JsonApi) (E : Engine) = struct
 		let open LinkedNode in
 		let tokens = to_list (fun node ->
 			let tk,_,_ = fst node.data in
-			Api.jstring (s_token tk)
+			let flag = match snd node.data with
+				| TFImplicit -> ["flag",Api.jstring "implicit"]
+				| TFInserted -> ["flag",Api.jstring "inserted"]
+				| _ -> []
+			in
+			Api.jobject (("token",Api.jstring (s_token tk)) :: flag)
 		) tp.TokenProvider.token_cache.first.next in
 		let skipped = to_list (fun node -> Api.jint node.data) tp.TokenProvider.skipped_list.first.next in
 		let blocks = List.map (fun (p1,p2) -> Api.jobject (range_to_json p1 p2 [])) blocks in
