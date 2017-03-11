@@ -26,17 +26,8 @@ let quit_early = ref true
 let output_json = ref false
 let num_files = ref 0
 let num_errors = ref 0
-let compare = ref false
 
 let stdin_filename = "<stdin>"
-
-let load_file f =
-	let ic = open_in_bin f in
-	let n = in_channel_length ic in
-	let s = Bytes.create n in
-	really_input ic s 0 n;
-	close_in ic;
-	s
 
 (*let print node =
 	let f (token,flag) = match flag with
@@ -69,19 +60,19 @@ let parse filename =
 	begin try
 		let _ = Lexer.skip_header lexbuf in
 		let tp = TokenProvider.create lexbuf in
-		let print_json tree blocks errors =
-			let js = JSONConverter.convert tree tp blocks errors in
+		let print_json tree errors =
+			let js = JSONConverter.convert tree tp errors in
 			let buffer = Buffer.create 0 in
 			write_json (Buffer.add_string buffer) js;
 			print_endline (Buffer.contents buffer);
 		in
 		let open ParserDriver in
 		begin match ParserDriver.run config tp (Parser.Incremental.file lexbuf.pos) with
-			| Reject(sl,blocks) ->
+			| Reject sl ->
 				assert false
-			| Accept((pack,decls),blocks) ->
+			| Accept(pack,decls) ->
 				if !output_json then begin
-					print_json (Emitter.emit_file pack decls) blocks [];
+					print_json (Emitter.emit_file pack decls) [];
 					exit 0;
 				end;
 		end;
@@ -172,10 +163,6 @@ let args_spec = [
 	("--keep-going", Arg.Unit (fun () ->
 		quit_early := false
 	),"don't quit if there's an exception");
-	("--compare", Arg.Unit (fun () ->
-		compare := true;
-		config.build_parse_tree <- true;
-	),"compare roundtripped parse result with source file");
 	("--recover", Arg.Unit (fun () ->
 		config.recover <- true;
 	),"silently recover if possible");

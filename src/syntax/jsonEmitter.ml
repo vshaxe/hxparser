@@ -1,13 +1,3 @@
-module type JsonApi = sig
-	type t
-	val jarray : t list -> t
-	val jobject : (string * t) list -> t
-	val jbool : bool -> t
-	val jstring : string -> t
-	val jint : int -> t
-	val jnull : t
-end
-
 module EnumApi = struct
 	type enum_api =
 		| DoubleQuote
@@ -244,7 +234,7 @@ module EnumApi = struct
 		| AbstractDecl -> 5,"AbstractDecl"
 end
 
-module JsonEmitter(Api : JsonApi) = struct
+module JsonEmitter(Api : JsonApi.JsonApi) = struct
 	open EnumApi
 
 	type 'a t_pos = 'a * Pos.Range.t

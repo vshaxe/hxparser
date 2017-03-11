@@ -26,8 +26,8 @@ module Make (I : MenhirLib.IncrementalEngine.INCREMENTAL_ENGINE with type token 
 	end
 
 	type 'a result =
-		| Accept of 'a * range list
-		| Reject of string list * range list
+		| Accept of 'a
+		| Reject of string list
 
 	let print_position = Pos.Position.print
 
@@ -65,7 +65,7 @@ module Make (I : MenhirLib.IncrementalEngine.INCREMENTAL_ENGINE with type token 
 			if has_debug config DAccept then begin
 				prerr_endline "[ACCEPT]"
 			end;
-			Accept(v,tp.TokenProvider.blocks)
+			Accept v
 		| I.InputNeeded _ ->
 			input_needed (config,tp) state
 		| I.Shifting _ ->
@@ -138,7 +138,7 @@ module Make (I : MenhirLib.IncrementalEngine.INCREMENTAL_ENGINE with type token 
 			(* In recover mode we only fail if the last offer was EOF. Since that wasn't shifted,
 			let's append it to the rejected tree. *)
 			if config.recover then ignore(shift (config,tp) state);
-			Reject(!messages,tp.TokenProvider.blocks)
+			Reject !messages
 
 	and start (config,tp) checkpoint =
 		if has_debug config DStart then begin

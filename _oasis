@@ -38,26 +38,20 @@ Executable "hxparser"
     Path: src
     MainIs: hxparser.ml
     CompiledObject: native
-    BuildDepends: menhirLib,sedlex,haxe-syntax,unix,str
+    BuildDepends: menhirLib,sedlex,haxe-context,haxe-syntax,unix,str
 
 Executable "hxparserjs"
     Path: src
     MainIs: hxparserjs.ml
     CompiledObject: byte
-    BuildDepends: menhirLib,sedlex,haxe-syntax,unix,str,js_of_ocaml
+    BuildDepends: menhirLib,sedlex,haxe-context,haxe-syntax,unix,str,js_of_ocaml
     Build: false
     if flag(js)
         Build: true
 
 Library "haxe-context"
     Path: src/context
-    BuildDepends: haxe-root
     Modules: Meta
-    Install: false
-
-Library "haxe-root"
-    Path: src
-    Modules: Globals,Json
     Install: false
 
 Library "haxe-syntax-basic"
@@ -79,6 +73,6 @@ Library "haxe-syntax-lexing"
 
 Library "haxe-syntax"
     Path: src/syntax
-    BuildDepends: menhirLib,haxe-context,haxe-root,haxe-syntax-basic,haxe-syntax-lexing,haxe-syntax-grammars
+    BuildDepends: menhirLib,haxe-context,haxe-syntax-basic,haxe-syntax-lexing,haxe-syntax-grammars
     Modules: ParserDriver
     Install: false

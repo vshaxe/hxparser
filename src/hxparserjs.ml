@@ -40,8 +40,8 @@ let parse filename entrypoint s =
 		begin match Js.to_string entrypoint with
 			| "file" ->
 				begin match run config tp (Parser.Incremental.file lexbuf.pos) with
-				| Reject(sl,blocks) -> assert false
-				| Accept((pack,decls),blocks) -> JsOfOcamlConverter.convert (Emitter.emit_file pack decls) tp blocks []
+				| Reject sl -> assert false
+				| Accept (pack,decls) -> JsOfOcamlConverter.convert (Emitter.emit_file pack decls) tp []
 				end;
 			(*| "class_fields" ->
 				begin match run config tp (Parser.Incremental.class_fields_only lexbuf.pos) with
