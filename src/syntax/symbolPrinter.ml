@@ -284,6 +284,7 @@ let s_xsymbol x =
 		| N_lpoption_else_expr_ -> "?"
 		| N_loption_separated_nonempty_list_COMMA_expr__ -> "?"
 		| N_loption_separated_nonempty_list_COMMA_function_argument__ -> "?"
+		| N_option_path_ -> "?"
 		(* lists *)
 		| N_path_with_pos -> "path"
 		| N_array_elements -> "elements"

@@ -546,8 +546,7 @@ abstract_decl:
 (* File *)
 
 package:
-	| PACKAGE; SEMICOLON { emit_package None }
-	| PACKAGE; path = path; SEMICOLON { emit_package (Some path) }
+	| PACKAGE; path = path?; SEMICOLON { emit_package path }
 
 file:
 	| package = package?; decls = decl*; EOF { package,decls }
