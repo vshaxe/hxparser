@@ -39,7 +39,7 @@ let parse filename entrypoint s =
 		let tp = TokenProvider.create lexbuf in
 		let run entrypoint emit =
 			begin match run config tp (entrypoint lexbuf.pos) with
-			| Reject sl -> assert false
+			| Reject sl -> report_error sl
 			| Accept result -> JsOfOcamlConverter.convert (emit result) tp []
 			end;
 		in

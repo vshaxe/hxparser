@@ -108,14 +108,15 @@ module Make (I : MenhirLib.IncrementalEngine.INCREMENTAL_ENGINE with type token 
 				| _,((ASSIGNSHR,p1,p2)) when acceptable GT p1 -> split (p1,p2) token GT GTE
 				| _,((ASSIGNUSHR,p1,p2)) when acceptable GT p1 -> split (p1,p2) token GT ASSIGNSHR
 				| _ when not config.recover -> fail()
-				| ((_,_,p)),_ ->
+				| ((tk,_,p)),_ ->
 					if acceptable SEMICOLON p then insert SEMICOLON false p
 					else if acceptable PCLOSE p then insert PCLOSE false p
-					else if acceptable BRCLOSE p then insert BRCLOSE false p
 					else if acceptable BKCLOSE p then insert BKCLOSE false p
-					else if acceptable (IDENT "_") p then insert (IDENT "_") false p
+					else if tk <> SEMICOLON && acceptable (IDENT "_") p then insert (IDENT "_") false p
 					else begin match token with
-						| ((EOF,_,_)) -> fail()
+						| ((EOF,_,_)) ->
+							if acceptable BRCLOSE p then insert BRCLOSE false p
+							else fail()
 						| token ->
 							TokenProvider.skip tp state.last_offer;
 							loop (config,tp) state.recover_state
