@@ -42,8 +42,14 @@ type t_common_flag = enum_flag
 type t_class_flag = class_flag
 type t_class = (t_class_flag * string t_pos option * t_type_decl_parameter list * t_class_relation list * t_class_field list)
 type t_decl = type_decl
+
+(* File *)
+
 type t_package = string list
 type t_file = t_package option * t_decl list
+type t_decls_only = t_decl list
+type t_class_fields_only = t_class_field list
+type t_block_elements_only = t_block_element list
 
 let emit_path ident idents =
 	(ident :: idents)
@@ -472,3 +478,9 @@ let emit_package path = match path with
 
 let emit_file package decl =
 	(package,decl)
+
+let emit_decls_only decls = decls
+
+let emit_class_fields_only cffl = cffl
+
+let emit_block_elements_only el = el

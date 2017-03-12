@@ -280,8 +280,12 @@ module JsonEmitter(Api : JsonApi.JsonApi) = struct
 	type t_class_flag = Api.t
 	type t_class = Api.t
 	type t_decl = Api.t
+
 	type t_package = Api.t
 	type t_file = Api.t
+	type t_decls_only = Api.t
+	type t_class_fields_only = Api.t
+	type t_block_elements_only = Api.t
 
 	let enum enum_name constructor arguments =
 		let index,name = EnumApi.info constructor in
@@ -766,4 +770,10 @@ module JsonEmitter(Api : JsonApi.JsonApi) = struct
 			"pack",opt pack;
 			"decls",arr decls;
 		]
+
+	let emit_decls_only decls = arr decls
+
+	let emit_class_fields_only cffl = arr cffl
+
+	let emit_block_elements_only el = arr el
 end

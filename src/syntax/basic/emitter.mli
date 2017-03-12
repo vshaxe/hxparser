@@ -50,8 +50,14 @@ module type Sig = sig
 	type t_class_flag
 	type t_class
 	type t_decl
+
+	(* File *)
+
 	type t_package
 	type t_file
+	type t_decls_only
+	type t_class_fields_only
+	type t_block_elements_only
 
 	val emit_path : string -> string list -> t_path
 	val emit_pos_path : string t_pos -> string t_pos list -> t_pos_path
@@ -202,4 +208,10 @@ module type Sig = sig
 	val emit_package : t_path option -> t_package
 
 	val emit_file : t_package option -> t_decl list -> t_file
+
+	val emit_decls_only : t_decl list -> t_decls_only
+
+	val emit_class_fields_only : t_class_field list -> t_class_fields_only
+
+	val emit_block_elements_only : t_block_element list -> t_block_elements_only
 end

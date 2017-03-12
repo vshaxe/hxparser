@@ -41,8 +41,14 @@ type t_common_flag = unit
 type t_class_flag = unit
 type t_class = unit
 type t_decl = unit
+
+(* File *)
+
 type t_package = unit
 type t_file = unit
+type t_decls_only = unit
+type t_class_fields_only = unit
+type t_block_elements_only = unit
 
 let emit_path ident idents = ()
 
@@ -276,3 +282,9 @@ let emit_abstract_decl annotations flags name tl st rl l p = ()
 let emit_package path = ()
 
 let emit_file = ()
+
+let emit_decls_only decls = ()
+
+let emit_class_fields_only cffl = ()
+
+let emit_block_elements_only el = ()

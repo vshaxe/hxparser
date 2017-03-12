@@ -37,23 +37,18 @@ let parse filename entrypoint s =
 	begin try
 		let _ = Lexer.skip_header lexbuf in
 		let tp = TokenProvider.create lexbuf in
-		let run entrypoint emit =
+		let run entrypoint =
 			begin match run config tp (entrypoint lexbuf.pos) with
 			| Reject sl -> report_error sl
-			| Accept result -> JsOfOcamlConverter.convert (emit result) tp []
+			| Accept result -> JsOfOcamlConverter.convert result tp []
 			end;
 		in
 		begin match Js.to_string entrypoint with
-			| "file" ->
-				run Parser.Incremental.file (fun t -> t)
-			| "decls" ->
-				run Parser.Incremental.decls_only JSON.jarray
-			| "class_fields" ->
-				run Parser.Incremental.class_fields_only JSON.jarray
-			| "block_elements" ->
-				run Parser.Incremental.block_elements_only JSON.jarray
-			| entrypoint ->
-				failwith ("Unknown entry point: " ^ entrypoint)
+			| "file" -> run Parser.Incremental.file
+			| "decls" -> run Parser.Incremental.decls_only
+			| "class_fields" -> run Parser.Incremental.class_fields_only
+			| "block_elements" -> run Parser.Incremental.block_elements_only
+			| entrypoint -> failwith ("Unknown entry point: " ^ entrypoint)
 		end
 	with exc ->
 		report_error [Printexc.to_string exc];

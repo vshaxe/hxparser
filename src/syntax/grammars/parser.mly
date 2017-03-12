@@ -2,9 +2,9 @@
 
 %start <Emitter.t_file> file
 %start <Emitter.t_expr> expr_only
-%start <Emitter.t_class_field list> class_fields_only
-%start <Emitter.t_decl list> decls_only
-%start <Emitter.t_block_element list> block_elements_only
+%start <Emitter.t_class_fields_only> class_fields_only
+%start <Emitter.t_decls_only> decls_only
+%start <Emitter.t_block_elements_only> block_elements_only
 %start <unit> unused
 
 %type <Emitter.t_path> path
@@ -560,13 +560,13 @@ expr_only:
 	| expr = expr; EOF { expr }
 
 class_fields_only:
-	| cff = class_field+; EOF { cff }
+	| cff = class_field+; EOF { emit_class_fields_only cff }
 
 decls_only:
-	| decl = decl+; EOF { decl }
+	| decls = decl+; EOF { emit_decls_only decls }
 
 block_elements_only:
-	| el = block_element+; EOF { el }
+	| el = block_element+; EOF { emit_block_elements_only el }
 
 unused:
 	| WHITESPACE | COMMENTLINE | NEWLINE | NONSENSE | SHARPIF | SHARPELSE
