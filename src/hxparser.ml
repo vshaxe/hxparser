@@ -167,11 +167,11 @@ let args_spec = [
 		config.recover <- true;
 	),"silently recover if possible");
 	("--entrypoint", Arg.String (fun s -> match s with
-			| "file" -> entrypoint := Parser.Incremental.file
-			| "decls" -> entrypoint := Parser.Incremental.decls_only
-			| "class_fields" -> entrypoint := Parser.Incremental.class_fields_only
-			| "block_elements" -> entrypoint := Parser.Incremental.block_elements_only
-			| entrypoint -> failwith ("Unknown entry point: " ^ entrypoint)
+		| "file" -> entrypoint := Parser.Incremental.file
+		| "decls" -> entrypoint := Parser.Incremental.decls_only
+		| "class_fields" -> entrypoint := Parser.Incremental.class_fields_only
+		| "block_elements" -> entrypoint := Parser.Incremental.block_elements_only
+		| entrypoint -> failwith ("Unknown entry point: " ^ entrypoint)
 	),"set the entry point (file|decls|class_fields|block_elements)");
 ]
 let paths = ref []
