@@ -281,6 +281,7 @@ module JsonEmitter(Api : JsonApi.JsonApi) = struct
 	type t_class = Api.t
 	type t_decl = Api.t
 	type t_package = Api.t
+	type t_file = Api.t
 
 	let enum enum_name constructor arguments =
 		let index,name = EnumApi.info constructor in

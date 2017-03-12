@@ -45,7 +45,7 @@ let parse filename entrypoint s =
 		in
 		begin match Js.to_string entrypoint with
 			| "file" ->
-				run Parser.Incremental.file (fun (pack,decls) -> Emitter.emit_file pack decls)
+				run Parser.Incremental.file (fun t -> t)
 			| "decls" ->
 				run Parser.Incremental.decls_only JSON.jarray
 			| "class_fields" ->

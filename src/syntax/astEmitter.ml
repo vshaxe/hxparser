@@ -43,6 +43,7 @@ type t_class_flag = class_flag
 type t_class = (t_class_flag * string t_pos option * t_type_decl_parameter list * t_class_relation list * t_class_field list)
 type t_decl = type_decl
 type t_package = string list
+type t_file = t_package option * t_decl list
 
 let emit_path ident idents =
 	(ident :: idents)
@@ -468,3 +469,6 @@ let emit_abstract_decl annotations flags name tl st rl l p =
 let emit_package path = match path with
 	| None -> []
 	| Some path -> path
+
+let emit_file package decl =
+	(package,decl)

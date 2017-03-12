@@ -51,6 +51,7 @@ module type Sig = sig
 	type t_class
 	type t_decl
 	type t_package
+	type t_file
 
 	val emit_path : string -> string list -> t_path
 	val emit_pos_path : string t_pos -> string t_pos list -> t_pos_path
@@ -199,4 +200,6 @@ module type Sig = sig
 	(* File *)
 
 	val emit_package : t_path option -> t_package
+
+	val emit_file : t_package option -> t_decl list -> t_file
 end

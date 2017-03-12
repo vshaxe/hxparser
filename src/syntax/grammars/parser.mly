@@ -1,6 +1,6 @@
 (* Start and types *)
 
-%start <Emitter.t_package option * Emitter.t_decl list> file
+%start <Emitter.t_file> file
 %start <Emitter.t_expr> expr_only
 %start <Emitter.t_class_field list> class_fields_only
 %start <Emitter.t_decl list> decls_only
@@ -552,7 +552,7 @@ package:
 	| PACKAGE; path = path; SEMICOLON { emit_package (Some path) }
 
 file:
-	| package = package?; decls = decl*; EOF { package,decls }
+	| package = package?; decls = decl*; EOF { emit_file package decls }
 
 (* Entry points *)
 

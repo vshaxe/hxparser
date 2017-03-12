@@ -42,6 +42,7 @@ type t_class_flag = unit
 type t_class = unit
 type t_decl = unit
 type t_package = unit
+type t_file = unit
 
 let emit_path ident idents = ()
 
@@ -273,3 +274,5 @@ let emit_typedef_decl annotations flags name tl ct p = ()
 let emit_abstract_decl annotations flags name tl st rl l p = ()
 
 let emit_package path = ()
+
+let emit_file = ()

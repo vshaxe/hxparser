@@ -70,9 +70,9 @@ let parse filename =
 		begin match ParserDriver.run config tp (Parser.Incremental.file lexbuf.pos) with
 			| Reject sl ->
 				report_error sl
-			| Accept(pack,decls) ->
+			| Accept file ->
 				if !output_json then begin
-					print_json (Emitter.emit_file pack decls) [];
+					print_json file [];
 					exit 0;
 				end;
 		end;
