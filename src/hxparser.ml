@@ -26,8 +26,8 @@ let quit_early = ref true
 let output_json = ref false
 let num_files = ref 0
 let num_errors = ref 0
-
 let stdin_filename = "<stdin>"
+let entrypoint = ref Parser.Incremental.file
 
 (*let print node =
 	let f (token,flag) = match flag with
@@ -67,7 +67,7 @@ let parse filename =
 			print_endline (Buffer.contents buffer);
 		in
 		let open ParserDriver in
-		begin match ParserDriver.run config tp (Parser.Incremental.file lexbuf.pos) with
+		begin match ParserDriver.run config tp (!entrypoint lexbuf.pos) with
 			| Reject sl ->
 				report_error sl
 			| Accept file ->
@@ -166,6 +166,13 @@ let args_spec = [
 	("--recover", Arg.Unit (fun () ->
 		config.recover <- true;
 	),"silently recover if possible");
+	("--entrypoint", Arg.String (fun s -> match s with
+			| "file" -> entrypoint := Parser.Incremental.file
+			| "decls" -> entrypoint := Parser.Incremental.decls_only
+			| "class_fields" -> entrypoint := Parser.Incremental.class_fields_only
+			| "block_elements" -> entrypoint := Parser.Incremental.block_elements_only
+			| entrypoint -> failwith ("Unknown entry point: " ^ entrypoint)
+	),"set the entry point (file|decls|class_fields|block_elements)");
 ]
 let paths = ref []
 let process args =
