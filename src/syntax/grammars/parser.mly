@@ -77,15 +77,15 @@ var_declarations_next:
 var_declarations:
 	| v = var_declaration; vl = var_declarations_next { v :: vl }
 
-else_expr:
+%inline else_expr:
 	| ELSE; e1 = expr { e1 }
 
-catch:
+%inline catch:
 	| CATCH; POPEN; name = pos(dollar_ident); ct = type_hint; PCLOSE; e1 = expr {
 		emit_catch name ct e1 (mk $startpos $endpos)
 	}
 
-guard:
+%inline guard:
 	| IF; POPEN; e1 = expr; PCLOSE { e1 }
 
 case:
@@ -124,7 +124,7 @@ object_fields_next:
 	| COMMA { [],true }
 	| COMMA; f = object_field; fl = object_fields_next { f :: (fst fl),snd fl }
 
-object_fields:
+%inline object_fields:
 	| f = object_field; fl = object_fields_next { f :: (fst fl),snd fl }
 
 macro_expr:
@@ -213,7 +213,7 @@ expr:
 
 (* Type hints *)
 
-structural_extension:
+%inline structural_extension:
 	| GT; tp = type_path; COMMA { tp }
 
 anonymous_type_field:
@@ -266,12 +266,12 @@ type_hint:
 
 (* Field *)
 
-function_argument:
+%inline function_argument:
 	| annotations = annotations; opt = QUESTIONMARK?; name = pos(dollar_ident); ct = type_hint?; eo = assignment? {
 		emit_function_argument annotations opt name ct eo
 	}
 
-function_arguments:
+%inline function_arguments:
 	| l = separated_list(COMMA,function_argument) { l }
 
 modifier:
@@ -304,7 +304,7 @@ class_field:
 		emit_property_field annotations ml name get set ct eo (mk $startpos $endpos)
 	}
 
-enum_field_arg:
+%inline enum_field_arg:
 	| opt = QUESTIONMARK?; name = dollar_ident; ct = type_hint; {
 		emit_enum_field_arg opt name ct
 	}
@@ -313,7 +313,7 @@ enum_field_args:
 	| { [] }
 	| POPEN; l = separated_list(COMMA,enum_field_arg); PCLOSE { l }
 
-enum_field:
+%inline enum_field:
 	| annotations = annotations; name = pos(dollar_ident); tl = type_decl_parameters; args = enum_field_args; ct = type_hint?; SEMICOLON {
 		emit_enum_field annotations name tl args ct (mk $startpos $endpos)
 	}
@@ -328,7 +328,7 @@ abstract_relations:
 	| TO; ct = complex_type { emit_abstract_relation_to ct }
 	| FROM; ct = complex_type { emit_abstract_relation_from ct }
 
-underlying_type:
+%inline underlying_type:
 	| POPEN; ct = complex_type; PCLOSE { ct }
 
 common_flags:
@@ -342,7 +342,7 @@ constraints:
 	| COLON; ct = complex_type { emit_constraints_single ct }
 	| { emit_constraints_none }
 
-type_decl_parameter:
+%inline type_decl_parameter:
 	| annotations = annotations; name = pos(dollar_ident); ctl = constraints {
 		emit_type_decl_parameter annotations name ctl
 	}
