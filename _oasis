@@ -51,18 +51,17 @@ Executable "hxparserjs"
 
 Library "haxe-context"
     Path: src/context
-    Modules: Meta
     Install: false
 
 Library "haxe-syntax-basic"
     Path: src/syntax/basic
-    BuildDepends: haxe-context
-    Modules: AstPre,Ops,Pos
+    BuildDepends: haxe-context,haxe-data-syntax
+    Modules: AstPre
     Install: false
 
 Library "haxe-syntax-grammars"
     Path: src/syntax/grammars
-    BuildDepends: sedlex,haxe-syntax-basic,menhirLib
+    BuildDepends: sedlex,haxe-syntax-basic,haxe-data-syntax,menhirLib
     Modules: Parser,ParserPre
     Install: false
 
@@ -73,6 +72,17 @@ Library "haxe-syntax-lexing"
 
 Library "haxe-syntax"
     Path: src/syntax
-    BuildDepends: menhirLib,haxe-context,haxe-syntax-basic,haxe-syntax-lexing,haxe-syntax-grammars
+    BuildDepends: menhirLib,haxe-context,haxe-syntax-basic,haxe-syntax-lexing,haxe-syntax-grammars,haxe-data-syntax
     Modules: ParserDriver
+    Install: false
+
+Library "haxe-data-global"
+    Path: src/data/global
+    Modules: Meta
+    Install: false
+
+Library "haxe-data-syntax"
+    Path: src/data/syntax
+    BuildDepends: haxe-data-global
+    Modules: Ast,Ops,Pos
     Install: false
