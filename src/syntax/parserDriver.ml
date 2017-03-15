@@ -55,19 +55,16 @@ module Make (I : MenhirLib.IncrementalEngine.INCREMENTAL_ENGINE with type token 
 		TokenProvider.on_shift tp state.last_offer;
 		state,token
 
-	let rec input_needed (config,tp) state =
-		let token,flag,skipped = TokenProvider.next_token tp in
-		let state = offer config state flag skipped token in
-		loop (config,tp) state
-
-	and loop (config,tp) state = match state.checkpoint with
+	let rec loop (config,tp) state = match state.checkpoint with
 		| I.Accepted v ->
 			if has_debug config DAccept then begin
 				prerr_endline "[ACCEPT]"
 			end;
 			Accept v
 		| I.InputNeeded _ ->
-			input_needed (config,tp) state
+			let token,flag,skipped = TokenProvider.next_token tp in
+			let state = offer config state flag skipped token in
+			loop (config,tp) state
 		| I.Shifting _ ->
 			let state,token = shift (config,tp) state in
 			let state = {state with checkpoint = I.resume state.checkpoint; last_shift = token} in
@@ -86,27 +83,27 @@ module Make (I : MenhirLib.IncrementalEngine.INCREMENTAL_ENGINE with type token 
 				TokenProvider.insert_token tp last_offer;
 				loop (config,tp) state
 			in
-			let split (p1,p2) original new1 new2 =
+			let token,_,skipped = state.last_offer in
+			let split (p1,p2) new1 new2 =
 				let open Lexing in
 				let p1' = {p1 with pos_cnum = p1.pos_cnum + 1} in
 				let token1 = (new1,p1,p1') in
 				let token2 = (new2,p1',p2) in
 				TokenProvider.insert_token tp (token2,TFNormal,0);
-				TokenProvider.insert_token tp (token1,(TFSplit(original,token2)),0);
+				TokenProvider.insert_token tp (token1,(TFSplit(token,token2)),skipped);
 				loop (config,tp) state.recover_state
 			in
 			let acceptable token = I.acceptable state.recover_state.checkpoint token in
 			let fail () =
 				loop (config,tp) {state with checkpoint = I.resume state.checkpoint}
 			in
-			let token,_,skipped = state.last_offer in
 			begin match state.last_shift,token with
 				| ((BRCLOSE,_,p)),_ when acceptable SEMICOLON p -> insert SEMICOLON true p
-				| _,((SHR,p1,p2)) when acceptable GT p1 -> split (p1,p2) token GT GT
-				| _,((USHR,p1,p2)) when acceptable GT p1 -> split (p1,p2) token GT SHR
-				| _,((GTE,p1,p2)) when acceptable GT p1 -> split (p1,p2) token GT ASSIGN
-				| _,((ASSIGNSHR,p1,p2)) when acceptable GT p1 -> split (p1,p2) token GT GTE
-				| _,((ASSIGNUSHR,p1,p2)) when acceptable GT p1 -> split (p1,p2) token GT ASSIGNSHR
+				| _,((SHR,p1,p2)) when acceptable GT p1 -> split (p1,p2) GT GT
+				| _,((USHR,p1,p2)) when acceptable GT p1 -> split (p1,p2) GT SHR
+				| _,((GTE,p1,p2)) when acceptable GT p1 -> split (p1,p2) GT ASSIGN
+				| _,((ASSIGNSHR,p1,p2)) when acceptable GT p1 -> split (p1,p2) GT GTE
+				| _,((ASSIGNUSHR,p1,p2)) when acceptable GT p1 -> split (p1,p2) GT ASSIGNSHR
 				| _ when not config.recover -> fail()
 				| ((tk,_,p)),_ ->
 					if acceptable SEMICOLON p then insert SEMICOLON false p
@@ -141,7 +138,7 @@ module Make (I : MenhirLib.IncrementalEngine.INCREMENTAL_ENGINE with type token 
 			if config.recover then ignore(shift (config,tp) state);
 			Reject !messages
 
-	and start (config,tp) checkpoint =
+	let start (config,tp) checkpoint =
 		if has_debug config DStart then begin
 			prerr_endline "[START ]"
 		end;
