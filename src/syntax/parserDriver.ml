@@ -113,7 +113,7 @@ module Make (E : Engine) = struct
 				let token = (token,p,p) in
 				let state = offer config state.recover_state (if allowed then TFImplicit else TFInserted) 0 token in
 				TokenProvider.insert_token tp last_offer;
-				loop (config,tp) state
+				(config,tp),state
 			in
 			let token,_,skipped = state.last_offer in
 			let split (p1,p2) new1 new2 =
@@ -123,28 +123,31 @@ module Make (E : Engine) = struct
 				let token2 = (new2,p1',p2) in
 				TokenProvider.insert_token tp (token2,TFNormal,0);
 				TokenProvider.insert_token tp (token1,(TFSplit(token,token2)),skipped);
-				loop (config,tp) state.recover_state
+				(config,tp),state.recover_state
 			in
 			let acceptable token = I.acceptable state.recover_state.checkpoint token in
 			let fail () =
 				loop (config,tp) {state with checkpoint = I.resume state.checkpoint}
 			in
 			begin match state.last_shift,token with
-				| ((BRCLOSE,_,p)),_ when acceptable SEMICOLON p -> insert SEMICOLON true p
-				| _,((SHR,p1,p2)) when acceptable GT p1 -> split (p1,p2) GT GT
-				| _,((USHR,p1,p2)) when acceptable GT p1 -> split (p1,p2) GT SHR
-				| _,((GTE,p1,p2)) when acceptable GT p1 -> split (p1,p2) GT ASSIGN
-				| _,((ASSIGNSHR,p1,p2)) when acceptable GT p1 -> split (p1,p2) GT GTE
-				| _,((ASSIGNUSHR,p1,p2)) when acceptable GT p1 -> split (p1,p2) GT ASSIGNSHR
+				| ((BRCLOSE,_,p)),_ when acceptable SEMICOLON p ->
+					let fst,snd = insert SEMICOLON true p in
+					loop fst snd
+				| _,((SHR,p1,p2)) when acceptable GT p1 -> (let (fst,snd) = split (p1,p2) GT GT in loop fst snd)
+				| _,((USHR,p1,p2)) when acceptable GT p1 -> (let (fst,snd) = split (p1,p2) GT SHR in loop fst snd)
+				| _,((GTE,p1,p2)) when acceptable GT p1 -> (let (fst,snd) = split (p1,p2) GT ASSIGN in loop fst snd)
+				| _,((ASSIGNSHR,p1,p2)) when acceptable GT p1 -> (let (fst,snd) = split (p1,p2) GT GTE in loop fst snd)
+				| _,((ASSIGNUSHR,p1,p2)) when acceptable GT p1 -> (let (fst,snd) = split (p1,p2) GT ASSIGNSHR in loop fst snd)
 				| _ when not config.recover -> fail()
-				| ((_,_,p)),_ ->
-					if acceptable SEMICOLON p then insert SEMICOLON false p
-					else if acceptable PCLOSE p then insert PCLOSE false p
-					else if acceptable BRCLOSE p then insert BRCLOSE false p
-					else if acceptable BKCLOSE p then insert BKCLOSE false p
-					else if acceptable (IDENT "_") p then insert (IDENT "_") false p
+				| ((tk,_,p)),_ ->
+					if acceptable SEMICOLON p then (let (fst,snd) = insert SEMICOLON false p in loop fst snd)
+					else if acceptable PCLOSE p then (let (fst,snd) = insert PCLOSE false p in loop fst snd)
+					else if acceptable BKCLOSE p then (let (fst,snd) = insert BKCLOSE false p in loop fst snd)
+					else if tk <> SEMICOLON && acceptable (IDENT "_") p then (let (fst,snd) = insert (IDENT "_") false p in loop fst snd)
 					else begin match token with
-						| ((EOF,_,_)) -> fail()
+						| ((EOF,_,_)) ->
+							if acceptable BRCLOSE p then (let (fst,snd) = insert BRCLOSE false p in loop fst snd)
+							else fail()
 						| token ->
 							TokenProvider.skip tp state.last_offer;
 							loop (config,tp) state.recover_state
