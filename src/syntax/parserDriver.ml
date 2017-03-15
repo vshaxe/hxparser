@@ -118,27 +118,27 @@ module Make (E : Engine) = struct
 				TokenProvider.insert_token tp last_offer;
 				loop (config,tp) state
 			in
-			let split (p1,p2) original new1 new2 =
+			let token,_,skipped = state.last_offer in
+			let split (p1,p2) new1 new2 =
 				let open Lexing in
 				let p1' = {p1 with pos_cnum = p1.pos_cnum + 1} in
 				let token1 = (new1,p1,p1') in
 				let token2 = (new2,p1',p2) in
 				TokenProvider.insert_token tp (token2,TFNormal,0);
-				TokenProvider.insert_token tp (token1,(TFSplit(original,token2)),0);
+				TokenProvider.insert_token tp (token1,(TFSplit(token,token2)),skipped);
 				loop (config,tp) state.recover_state
 			in
 			let acceptable token = I.acceptable state.recover_state.checkpoint token in
 			let fail () =
 				loop (config,tp) {state with checkpoint = I.resume state.checkpoint}
 			in
-			let token,_,skipped = state.last_offer in
 			begin match state.last_shift,token with
 				| ((BRCLOSE,_,p)),_ when acceptable SEMICOLON p -> insert SEMICOLON true p
-				| _,((SHR,p1,p2)) when acceptable GT p1 -> split (p1,p2) token GT GT
-				| _,((USHR,p1,p2)) when acceptable GT p1 -> split (p1,p2) token GT SHR
-				| _,((GTE,p1,p2)) when acceptable GT p1 -> split (p1,p2) token GT ASSIGN
-				| _,((ASSIGNSHR,p1,p2)) when acceptable GT p1 -> split (p1,p2) token GT GTE
-				| _,((ASSIGNUSHR,p1,p2)) when acceptable GT p1 -> split (p1,p2) token GT ASSIGNSHR
+				| _,((SHR,p1,p2)) when acceptable GT p1 -> split (p1,p2) GT GT
+				| _,((USHR,p1,p2)) when acceptable GT p1 -> split (p1,p2) GT SHR
+				| _,((GTE,p1,p2)) when acceptable GT p1 -> split (p1,p2) GT ASSIGN
+				| _,((ASSIGNSHR,p1,p2)) when acceptable GT p1 -> split (p1,p2) GT GTE
+				| _,((ASSIGNUSHR,p1,p2)) when acceptable GT p1 -> split (p1,p2) GT ASSIGNSHR
 				| _ when not config.recover -> fail()
 				| ((_,_,p)),_ ->
 					if acceptable SEMICOLON p then insert SEMICOLON false p
