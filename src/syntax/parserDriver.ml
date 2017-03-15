@@ -70,19 +70,16 @@ module Make (E : Engine) = struct
 		in
 		state,token
 
-	let rec input_needed (config,tp) state =
-		let token,flag,skipped = TokenProvider.next_token tp in
-		let state = offer config state flag skipped token in
-		loop (config,tp) state
-
-	and loop (config,tp) state = match state.checkpoint with
+	let rec loop (config,tp) state = match state.checkpoint with
 		| I.Accepted v ->
 			if has_debug config DAccept then begin
 				prerr_endline "[ACCEPT]"
 			end;
 			Accept(v,state.tree,tp.TokenProvider.blocks)
 		| I.InputNeeded _ ->
-			input_needed (config,tp) state
+			let token,flag,skipped = TokenProvider.next_token tp in
+			let state = offer config state flag skipped token in
+			loop (config,tp) state
 		| I.Shifting _ ->
 			let state,token = shift (config,tp) state in
 			let state = {state with checkpoint = I.resume state.checkpoint; last_shift = token} in
@@ -175,7 +172,7 @@ module Make (E : Engine) = struct
 			in
 			Reject(!messages,List.rev state.tree,tp.TokenProvider.blocks)
 
-	and start (config,tp) checkpoint =
+	let start (config,tp) checkpoint =
 		if has_debug config DStart then begin
 			prerr_endline "[START ]"
 		end;
