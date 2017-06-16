@@ -244,41 +244,45 @@ and string2 buffer lexbuf =
 	| "$$" | "\\$" | '$' -> store(); string2 buffer lexbuf
 	| "${" ->
 		store();
-		let s = code_string (Buffer.create 0) lexbuf in
+		let s = code_string (Buffer.create 0) 0 lexbuf in
 		Buffer.add_string buffer s;
 		string2 buffer lexbuf
 	| Plus (Compl ('\'' | '\\' | '\r' | '\n' | '$')) -> store(); string2 buffer lexbuf
 	| _ -> assert false
 
-and code_string buffer lexbuf =
+and code_string buffer open_braces lexbuf =
 	let add s = Buffer.add_string buffer s in
 	let store () = add (lexeme lexbuf) in
 	let buf = lexbuf.stream in
 	match%sedlex buf with
 	| eof -> raise (Unclosed (Buffer.contents buffer));
-	| '\n' | '\r' | "\r\n" -> new_line lexbuf; store(); code_string buffer lexbuf
-	| '{' | '/' -> store(); code_string buffer lexbuf
+	| '\n' | '\r' | "\r\n" -> new_line lexbuf; store(); code_string buffer open_braces lexbuf
+	| '{' -> store(); code_string buffer (open_braces + 1) lexbuf
+	| '/' -> store(); code_string buffer open_braces lexbuf
 	| '}' ->
 		store();
-		Buffer.contents buffer;
+		if open_braces = 0 then
+			Buffer.contents buffer
+		else
+			code_string buffer (open_braces - 1) lexbuf
 	| '"' ->
 		add "\"";
 		let s = (try string (Buffer.create 0) lexbuf with Unclosed s -> s) in
 		add s;
 		add "\"";
-		code_string buffer lexbuf
+		code_string buffer open_braces lexbuf
 	| "'" ->
 		add "'";
 		let s = (try string2 (Buffer.create 0) lexbuf with Unclosed s -> s) in
 		add s;
 		add "'";
-		code_string buffer lexbuf
+		code_string buffer open_braces lexbuf
 	| "/*" ->
 		let s = (try string (Buffer.create 0) lexbuf with Unclosed s -> s) in
 		add s;
-		code_string buffer lexbuf
-	| "//", Star (Compl ('\n' | '\r')) -> store(); code_string buffer lexbuf
-	| Plus (Compl ('/' | '"' | '\'' | '{' | '}' | '\n' | '\r')) -> store(); code_string buffer lexbuf
+		code_string buffer open_braces lexbuf
+	| "//", Star (Compl ('\n' | '\r')) -> store(); code_string buffer open_braces lexbuf
+	| Plus (Compl ('/' | '"' | '\'' | '{' | '}' | '\n' | '\r')) -> store(); code_string buffer open_braces lexbuf
 	| _ -> assert false
 
 and comment buffer lexbuf =
