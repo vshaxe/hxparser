@@ -14,5 +14,5 @@ cp ../hxparser/hxparserjs.js .
 git config user.name 'Travis CI'
 git config user.email '<>'
 git add -A
-git commit -m "Update hxparserjs.js"
+git commit -m "Update for vshaxe/hxparser@$TRAVIS_COMMIT"
 git push origin

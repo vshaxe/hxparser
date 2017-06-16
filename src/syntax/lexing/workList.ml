@@ -20,7 +20,7 @@ module LinkedNode = struct
 
 	let to_list f t =
 		let rec loop acc t =
-			if t == t.next then [] else loop (f t :: acc) t.next
+			if t == t.next then acc else loop (f t :: acc) t.next
 		in
 		List.rev (loop [] t)
 
