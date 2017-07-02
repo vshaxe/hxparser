@@ -259,6 +259,7 @@ let emit_complex_type_parent ct p = CTParent ct,p
 let emit_complex_type_extension paths fields p = CTExtend(paths,fields),p
 let emit_complex_type_anonymous fields p = CTAnonymous fields,p
 let emit_complex_type_optional ct p = CTOptional ct,p
+let emit_complex_type_named n ct p = CTNamed (n,ct),p
 
 let emit_complex_type_function ct1 ct2 p =
 	match fst ct2 with

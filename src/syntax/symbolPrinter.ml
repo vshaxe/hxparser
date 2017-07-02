@@ -254,6 +254,7 @@ let s_xsymbol x =
 		| N_complex_type_extension -> "extension"
 		| N_complex_type_anonymous -> "anonymous"
 		| N_complex_type_optional -> "optional"
+		| N_complex_type_named -> "named"
 		| N_complex_type_path -> "path"
 		| N_complex_type_function -> "function"
 		| N_macro_expr_type_hint -> "macro_type_hint"
