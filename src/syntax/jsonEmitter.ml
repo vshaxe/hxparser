@@ -99,6 +99,7 @@ module EnumApi = struct
 		| StructuralExtension
 		| AnonymousStructure
 		| Optional
+		| Named
 		| TypePath
 		| CTFunction
 
@@ -543,6 +544,9 @@ module JsonEmitter(Api : JsonApi) = struct
 
 	let emit_complex_type_optional ct p =
 		enum "ComplexType" Optional [tok;ct]
+
+	let emit_complex_type_named n ct p =
+		enum "ComplexType" Named [n;tok;ct]
 
 	let emit_complex_type_function ct1 ct2 p =
 		enum "ComplexType" Function [ct1;tok;ct2] (* TODO: Compose these here? *)

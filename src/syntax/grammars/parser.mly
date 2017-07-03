@@ -349,6 +349,9 @@ complex_type_anonymous:
 complex_type_optional:
 	| QUESTIONMARK; ct = complex_type; { emit_complex_type_optional ct (mk $startpos $endpos) }
 
+complex_type_named:
+	| name = pos(dollar_ident); COLON; ct = complex_type { emit_complex_type_named name ct (mk $startpos $endpos) }
+
 complex_type_path:
 	| tp = type_path { emit_complex_type_path tp (mk $startpos $endpos) }
 
@@ -358,7 +361,7 @@ complex_type_function:
 	}
 
 complex_type:
-	| complex_type_parent | complex_type_extension | complex_type_anonymous | complex_type_optional
+	| complex_type_parent | complex_type_extension | complex_type_anonymous | complex_type_optional | complex_type_named
 	| complex_type_path | complex_type_function { $1 }
 
 type_path_parameter_bracket:
