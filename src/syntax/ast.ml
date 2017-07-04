@@ -46,7 +46,6 @@ and complex_type =
 	| CTParent of type_hint
 	| CTExtend of placed_type_path list * class_field list
 	| CTOptional of type_hint
-	| CTNamed of placed_name * type_hint
 
 and type_hint = complex_type * pos
 
@@ -312,7 +311,6 @@ let s_expr e =
 		| CTParent(t,_) -> "(" ^ s_complex_type tabs t ^ ")"
 		| CTOptional(t,_) -> "?" ^ s_complex_type tabs t
 		| CTExtend (tl, fl) -> "{> " ^ String.concat " >, " (List.map (s_complex_type_path tabs) tl) ^ ", " ^ String.concat ", " (List.map (s_class_field tabs) fl) ^ " }"
-		| CTNamed ((n,_),(t,_)) -> n ^ " : " ^ s_complex_type tabs t
 	and s_class_field tabs f =
 		match f.cff_doc with
 		| Some s -> "/**\n\t" ^ tabs ^ s ^ "\n**/\n"
