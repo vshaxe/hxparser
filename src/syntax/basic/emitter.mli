@@ -134,7 +134,6 @@ module type Sig = sig
 	val emit_complex_type_anonymous : t_anonymous_type_fields -> pos -> t_complex_type
 	val emit_complex_type_optional : t_complex_type -> pos -> t_complex_type
 	val emit_complex_type_function : t_complex_type -> t_complex_type -> pos -> t_complex_type
-	val emit_complex_type_named : string t_pos -> t_complex_type -> pos -> t_complex_type
 
 	val emit_type_path_parameter_complex_type : t_complex_type -> t_type_path_parameter_kind
 	val emit_type_path_parameter_bracket : t_expr list -> pos -> t_type_path_parameter_kind

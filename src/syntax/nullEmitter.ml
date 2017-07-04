@@ -181,7 +181,6 @@ let emit_complex_type_parent ct p = ()
 let emit_complex_type_extension paths fields p = ()
 let emit_complex_type_anonymous fields p = ()
 let emit_complex_type_optional ct p = ()
-let emit_complex_type_named n ct p = ()
 
 let emit_complex_type_function ct1 ct2 p = ()
 
