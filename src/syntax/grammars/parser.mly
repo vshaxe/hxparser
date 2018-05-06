@@ -44,7 +44,7 @@ annotations:
 %inline pos(f):
 	| x = f { x,mk $startpos $endpos }
 
-dollar_ident:
+%inline dollar_ident:
 	| s = ident | s = DOLLAR_IDENT { s }
 
 dot_ident:
@@ -88,8 +88,15 @@ catch:
 guard:
 	| IF; POPEN; e1 = expr; PCLOSE { e1 }
 
+case_expr:
+	| VAR; name = pos(dollar_ident) {
+		let v = emit_var_declaration name None None in
+		emit_var_declaration_expr v (mk $startpos $endpos)
+	}
+	| e = expr_open | e = expr_closed { e }
+
 case:
-	| CASE; el = separated_nonempty_list(COMMA,expr); eg = guard?; COLON; el2 = block_element* {
+	| CASE; el = separated_nonempty_list(COMMA,case_expr); eg = guard?; COLON; el2 = block_element* {
 		emit_case el eg el2 (mk $startpos $endpos)
 	}
 	| DEFAULT; COLON; el = block_element* {

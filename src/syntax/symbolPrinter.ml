@@ -169,7 +169,7 @@ let s_xsymbol x =
 		| N_class_relations -> "class_relations"
 		| N_call_args -> "call_args"
 		| N_type_hint -> "type_hint"
-		| N_dollar_ident -> "dollar_ident"
+		(* | N_dollar_ident -> "dollar_ident" *)
 		| N_complex_type -> "complex_type"
 		| N_anonymous_type_field -> "anonymous_type_field"
 		| N_var_declaration -> "var_declaration"
@@ -273,6 +273,7 @@ let s_xsymbol x =
 		| N_import_mode_normal -> "normal"
 		| N_import_mode_all -> "all"
 		| N_import_mode_alias -> "alias"
+		| N_case_expr -> "case_expr"
 		(* options *)
 		| N_option_package_ -> "?"
 		| N_option_type_hint_ -> "?"
@@ -318,6 +319,7 @@ let s_xsymbol x =
 		| N_separated_nonempty_list_COMMA_function_argument_ -> "args"
 		| N_separated_nonempty_list_COMMA_complex_type_ -> "types"
 		| N_separated_nonempty_list_COMMA_enum_field_arg_ -> "args"
+		| N_separated_nonempty_list_COMMA_case_expr_ -> "patterns"
 		| N_loption_separated_nonempty_list_COMMA_enum_field_arg__ -> "args"
 		| N_list_enum_field_ -> "enum_fields"
 		end
