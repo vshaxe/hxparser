@@ -558,13 +558,26 @@ enum_decl:
 		emit_enum_decl annotations flags name tl l (mk $startpos $endpos)
 	}
 
+abstract_decl2:
+	| ABSTRACT; name = pos(dollar_ident); tl = type_decl_parameters; st = underlying_type?; rl = abstract_relations*; BROPEN; l = class_field*; BRCLOSE {
+		name,tl,st,rl,l
+	}
+
+enum_abstract_decl:
+	| annotations = annotations; flags = common_flags*; ENUM; a = abstract_decl2 {
+		let name,tl,st,rl,l = a in
+		(* TODO *)
+		emit_abstract_decl annotations flags name tl st rl l (mk $startpos $endpos)
+	}
+
 typedef_decl:
 	| annotations = annotations; flags = common_flags*; TYPEDEF; name = pos(dollar_ident); tl = type_decl_parameters; ASSIGN; ct = complex_type; SEMICOLON? {
 		emit_typedef_decl annotations flags name tl ct (mk $startpos $endpos)
 	}
 
 abstract_decl:
-	| annotations = annotations; flags = common_flags*; ABSTRACT; name = pos(dollar_ident); tl = type_decl_parameters; st = underlying_type?; rl = abstract_relations*; BROPEN; l = class_field*; BRCLOSE {
+	| annotations = annotations; flags = common_flags*; a = abstract_decl2 {
+		let name,tl,st,rl,l = a in
 		emit_abstract_decl annotations flags name tl st rl l (mk $startpos $endpos)
 	}
 
@@ -574,7 +587,7 @@ abstract_decl:
 	| c = class_decl { c }
 	| en = enum_decl { en }
 	| t = typedef_decl { t }
-	| a = abstract_decl { a }
+	| a = abstract_decl | a = enum_abstract_decl { a }
 
 (* File *)
 

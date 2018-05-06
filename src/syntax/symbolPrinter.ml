@@ -213,6 +213,8 @@ let s_xsymbol x =
 		| N_expr -> ""
 		| N_expr_typechecks -> "expr_typechecks"
 		| N_expr_lambda -> "expr_lambda"
+		| N_enum_abstract_decl -> "enum_abstract_decl"
+		| N_abstract_decl2 -> "abstract_decl2"
 		| N_dot_ident -> "dot_ident"
 		| N_class_fields_only -> "class_fields_only"
 		| N_class_decl_only -> "class_decl_only"
