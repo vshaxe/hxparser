@@ -148,13 +148,14 @@ module type Sig = sig
 	val emit_field_expr_block : t_expr -> t_field_expr
 	val emit_field_expr_expr : t_expr -> t_field_expr
 
-	val emit_static_modifier : t_modifier
-	val emit_macro_modifier : t_modifier
-	val emit_public_modifier : t_modifier
-	val emit_private_modifier : t_modifier
-	val emit_override_modifier : t_modifier
-	val emit_dynamic_modifier : t_modifier
-	val emit_inline_modifier : t_modifier
+	val emit_static_modifier : pos -> t_modifier
+	val emit_macro_modifier : pos -> t_modifier
+	val emit_public_modifier : pos -> t_modifier
+	val emit_private_modifier : pos -> t_modifier
+	val emit_override_modifier : pos -> t_modifier
+	val emit_dynamic_modifier : pos -> t_modifier
+	val emit_inline_modifier : pos -> t_modifier
+	val emit_extern_modifier : pos -> t_modifier
 
 	val emit_function_field : t_annotations -> t_modifier list -> string t_pos -> t_type_decl_parameter list -> t_function_argument list -> t_complex_type option -> t_field_expr -> pos -> t_class_field
 	val emit_variable_field : t_annotations -> t_modifier list -> string t_pos -> t_complex_type option -> t_expr option -> pos -> t_class_field

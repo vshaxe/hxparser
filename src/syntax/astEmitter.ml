@@ -10,8 +10,8 @@ type t_literal = constant
 type t_const = constant
 
 type t_block_element = expr
-type t_object_field_name = placed_name
-type t_object_field = (placed_name * expr)
+type t_object_field_name = (string * pos * Ast.quote_status)
+type t_object_field = (t_object_field_name * expr)
 type t_call_args = expr list
 type t_var_declaration = (placed_name * type_hint option * expr option)
 type t_catch = (placed_name * type_hint * expr * pos)
@@ -26,7 +26,7 @@ type t_complex_type = type_hint
 type t_function_argument = (placed_name * bool * metadata * type_hint option * expr option)
 type t_function = string option * func
 type t_field_expr = expr option
-type t_modifier = access
+type t_modifier = placed_access
 type t_class_field = class_field
 type t_enum_field_arg = (string * bool * type_hint)
 type t_enum_field = enum_constructor
@@ -132,10 +132,10 @@ let emit_object_field name e =
 	(name,e)
 
 let emit_object_field_name_ident s p =
-	s,p
+	s,p,NoQuotes
 
 let emit_object_field_name_string s p =
-	s,p
+	s,p,DoubleQuotes
 
 let emit_unknown p =
 	EConst(Ident "null"),p
@@ -255,7 +255,7 @@ let emit_ternary_expr e1 e2 e3 p =
 	ETernary(e1,e2,e3),p
 
 let emit_in_expr e1 e2 p =
-	EIn(e1,e2),p
+	EBinop(OpIn,e1,e2),p
 
 let emit_dotint_expr s p =
 	EConst(Float(s ^ ".")),p
@@ -308,13 +308,14 @@ let emit_field_expr_none = None
 let emit_field_expr_block e = Some e
 let emit_field_expr_expr e = Some e
 
-let emit_static_modifier = AStatic
-let emit_macro_modifier = AMacro
-let emit_public_modifier = APublic
-let emit_private_modifier = APrivate
-let emit_override_modifier = AOverride
-let emit_dynamic_modifier = ADynamic
-let emit_inline_modifier = AInline
+let emit_static_modifier p = AStatic,p
+let emit_macro_modifier p = AMacro,p
+let emit_public_modifier p = APublic,p
+let emit_private_modifier p = APrivate,p
+let emit_override_modifier p = AOverride,p
+let emit_dynamic_modifier p = ADynamic,p
+let emit_inline_modifier p = AInline,p
+let emit_extern_modifier p = AExtern,p
 
 let emit_function_field annotations modifiers name tl args cto e p =
 	let f = {
@@ -411,9 +412,9 @@ let emit_class_relation_extends path = HExtends path
 
 let emit_class_relation_implements path = HImplements path
 
-let emit_abstract_relation_from ct = AFromType ct
+let emit_abstract_relation_from ct = AbFrom ct
 
-let emit_abstract_relation_to ct = AToType ct
+let emit_abstract_relation_to ct = AbTo ct
 
 let emit_import_mode_all = IAll
 
@@ -469,8 +470,8 @@ let emit_typedef_decl annotations flags name tl ct p =
 	(ETypedef def,p)
 
 let emit_abstract_decl annotations flags name tl st rl l p =
-	let flags = List.map (fun c -> match c with EPrivate -> APrivAbstract | EExtern -> AExtern) flags in
-	let flags = (match st with None -> flags | Some t -> AIsType t :: flags) in
+	let flags = List.map (fun c -> match c with EPrivate -> AbPrivate | EExtern -> AbExtern) flags in
+	let flags = (match st with None -> flags | Some t -> AbOver t :: flags) in
 	let def = {
 		d_name = name;
 		d_doc = fst annotations;

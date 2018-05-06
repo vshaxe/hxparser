@@ -22,6 +22,7 @@ type binop =
 	| OpAssignOp of binop
 	| OpInterval
 	| OpArrow
+	| OpIn
 
 type unop =
 	| Increment

@@ -429,13 +429,14 @@ function_arguments:
 	| l = separated_list(COMMA,function_argument) { l }
 
 modifier:
-	| STATIC { emit_static_modifier }
-	| MACRO { emit_macro_modifier }
-	| PUBLIC { emit_public_modifier }
-	| PRIVATE { emit_private_modifier }
-	| OVERRIDE { emit_override_modifier }
-	| DYNAMIC { emit_dynamic_modifier }
-	| INLINE { emit_inline_modifier }
+	| STATIC { emit_static_modifier (mk $startpos $endpos) }
+	| MACRO { emit_macro_modifier (mk $startpos $endpos) }
+	| PUBLIC { emit_public_modifier (mk $startpos $endpos) }
+	| PRIVATE { emit_private_modifier (mk $startpos $endpos) }
+	| OVERRIDE { emit_override_modifier (mk $startpos $endpos) }
+	| DYNAMIC { emit_dynamic_modifier (mk $startpos $endpos) }
+	| INLINE { emit_inline_modifier (mk $startpos $endpos) }
+	| EXTERN { emit_extern_modifier (mk $startpos $endpos) }
 
 function_name:
 	| s = pos(dollar_ident) { s }
