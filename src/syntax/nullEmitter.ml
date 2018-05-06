@@ -52,6 +52,8 @@ let emit_metadata_entry_with_args meta el p = ()
 
 let emit_function name tl args cto e = ()
 
+let emit_lambda_arg arg = []
+
 let emit_annotations so metadata = ()
 
 let emit_literal_string s = ()

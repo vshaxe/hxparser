@@ -56,6 +56,7 @@ module type Sig = sig
 	val emit_metadata_entry : Meta.strict_meta -> Pos.Range.t -> t_metadata_entry
 	val emit_metadata_entry_with_args : Meta.strict_meta -> t_expr list -> Pos.Range.t -> t_metadata_entry
 	val emit_function : string option -> t_type_decl_parameter list -> t_function_argument list -> t_complex_type option -> t_expr -> t_function
+	val emit_lambda_arg : (t_expr * bool * t_metadata_entry list * t_complex_type option * t_expr option) * t_function_argument list -> t_function_argument list
 	val emit_annotations : string option -> t_metadata_entry list -> t_annotations
 
 	(* Expr *)

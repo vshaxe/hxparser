@@ -234,11 +234,19 @@ expr_safe_cast:
 expr_new:
 	| NEW; tp = type_path; el = call_args { emit_new_expr tp el (mk $startpos $endpos) }
 
-expr_parenthesis:
-	| POPEN; e1 = expr; PCLOSE { emit_parenthesis_expr e1 (mk $startpos $endpos) }
+lambda_function_argument:
+    | name = expr; ct = lpoption(type_hint); eo = assignment? { (name,(match None with None -> false | Some _ -> true),[],ct,eo) }
+    | QUESTIONMARK; name = pos(dollar_ident); ct = lpoption(type_hint); eo = assignment? {
+		let cst = emit_const_ident (fst name) in
+		let e = emit_const_expr cst (snd name) in
+		(e,true,[],ct,eo) }
 
-expr_typecheck:
-	| POPEN; e1 = expr; COLON; ct = complex_type; PCLOSE { emit_typecheck_expr e1 ct (mk $startpos $endpos) }
+lambda_function_arguments:
+    | COMMA; l = separated_nonempty_list(COMMA,function_argument) { l }
+    | { [] }
+
+expr_typechecks:
+    | POPEN; arg = lambda_function_argument; args = lambda_function_arguments; PCLOSE { arg,args }
 
 expr_is:
 	| POPEN; e1 = expr; is = pos(IS); tp = type_path; PCLOSE { emit_is_expr e1 tp (snd is) (mk $startpos $endpos) }
@@ -296,16 +304,40 @@ expr_const:
 expr_keyword_ident:
 	| e1 = keyword_ident { e1 }
 
+expr_lambda:
+    | args = expr_typechecks; ARROW; e1 = expr {
+		let lambda = emit_lambda_arg args in
+		let f = emit_function None [] lambda None e1 in
+		emit_function_expr f (mk $startpos $endpos)
+    }
+    | POPEN; PCLOSE; ARROW; e1 = expr {
+		let f = emit_function None [] [] None e1 in
+		emit_function_expr f (mk $startpos $endpos)
+    }
+	| name = pos(dollar_ident); ARROW; e1 = expr {
+		let cst = emit_const_ident (fst name) in
+		let e = emit_const_expr cst (snd name) in
+		let lambda = emit_lambda_arg ((e,false,[],None,None),[]) in
+		let f = emit_function None [] lambda None e1 in
+		emit_function_expr f (mk $startpos $endpos)
+	}
+
 expr_closed:
 	| expr_metadata | expr_macro | expr_block | expr_throw | expr_if | expr_return | expr_return_value | expr_break | expr_continue
-	| expr_do | expr_try | expr_switch | expr_for | expr_while | expr_untyped { $1 }
+	| expr_do | expr_try | expr_switch | expr_for | expr_while | expr_untyped | expr_lambda { $1 }
 
 expr_open:
-	| expr_object_declaration | expr_unsafe_cast | expr_safe_cast | expr_new | expr_parenthesis
-	| expr_typecheck | expr_is | expr_array_declaration | expr_function | expr_unary_prefix
+	| expr_object_declaration | expr_unsafe_cast | expr_safe_cast | expr_new
+	| expr_is | expr_array_declaration | expr_function | expr_unary_prefix
 	| expr_field | expr_call | expr_array_access | expr_binop | expr_unary_postfix
 	| expr_ternary | expr_in | expr_dotint | expr_dollarident | expr_macro_escape
 	| expr_const | expr_keyword_ident { $1 }
+    | tc = expr_typechecks {
+        match tc with
+        | (e,false,_,None,None),[] -> emit_parenthesis_expr e (mk $startpos $endpos)
+        | (e,false,_,Some ct,None),[] -> emit_typecheck_expr e ct (mk $startpos $endpos)
+        | _ -> $syntaxerror
+    }
 
 %inline expr_inline:
 	| e = expr_closed | e = expr_open | e = expr_var { e }

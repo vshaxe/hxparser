@@ -43,6 +43,8 @@ type t_class = (t_class_flag * string t_pos option * t_type_decl_parameter list 
 type t_decl = type_decl
 type t_package = string list
 
+type t_lambda_arg = (t_expr * bool * unit list * t_complex_type option * t_expr option) * t_function_argument list
+
 let emit_path ident idents =
 	(ident :: idents)
 
@@ -56,6 +58,27 @@ let emit_metadata_entry_with_args meta el p =
 	(meta,el,p)
 
 let emit_function name tl args cto e =
+	let f = {
+		f_params = tl;
+		f_type = cto;
+		f_args = args;
+		f_expr = Some e;
+	} in
+	name,f
+
+let emit_lambda_arg args =
+	let rec loop acc eo e = match fst e with
+		| EMeta(meta,e) -> loop (meta :: acc) eo e
+		| EConst(Ident s) -> (s,snd e),eo,List.rev acc
+		| EBinop(OpAssign,(EConst(Ident s),p),e1) -> (s,snd e),Some e1,List.rev acc
+		| _ -> assert false
+	in
+	let e,opt,_,ct,eo = fst args  in
+	let e,eo,meta = loop [] eo e in
+	let args = (e,opt,meta,ct,eo) :: (snd args) in
+	args
+
+let emit_function2 name tl args cto e =
 	let f = {
 		f_params = tl;
 		f_type = cto;
