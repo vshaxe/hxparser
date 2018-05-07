@@ -377,9 +377,22 @@ anonymous_type_fields:
 complex_type_named:
 	| n = pos(dollar_ident); COLON; ct = complex_type { emit_complex_type_named n ct (mk $startpos $endpos) }
 
+complex_type_maybe_named:
+	| complex_type_named | complex_type { $1 }
+
 complex_type_parent:
-	| POPEN; ctl = separated_list(COMMA, complex_type_named); PCLOSE; ARROW; ctr = complex_type { emit_complex_type_named_function ctl ctr (mk $startpos $endpos) }
-	| POPEN; ct = complex_type; PCLOSE { emit_complex_type_parent ct (mk $startpos $endpos) }
+	| POPEN; ct = complex_type; PCLOSE {
+		emit_complex_type_parent ct (mk $startpos $endpos)
+	}
+	| POPEN; ct = complex_type; COMMA; ctl = separated_nonempty_list(COMMA, complex_type_maybe_named); PCLOSE; ARROW; ctr = complex_type {
+		emit_complex_type_named_function (ct :: ctl) ctr (mk $startpos $endpos)
+	}
+	| POPEN; ct = complex_type_named; PCLOSE; ARROW; ctr = complex_type {
+		emit_complex_type_named_function [ct] ctr (mk $startpos $endpos)
+	}
+	| POPEN; ct = complex_type_named; COMMA; ctl = separated_nonempty_list(COMMA, complex_type_maybe_named); PCLOSE; ARROW; ctr = complex_type {
+		emit_complex_type_named_function (ct :: ctl) ctr (mk $startpos $endpos)
+	}
 
 complex_type_extension:
 	| BROPEN; l = structural_extension+; cffl = anonymous_type_fields; BRCLOSE {
@@ -390,7 +403,7 @@ complex_type_anonymous:
 	| BROPEN; l = anonymous_type_fields; BRCLOSE { emit_complex_type_anonymous l (mk $startpos $endpos) }
 
 complex_type_optional:
-	| QUESTIONMARK; ct = complex_type; { emit_complex_type_optional ct (mk $startpos $endpos) }
+	| QUESTIONMARK; ct = complex_type_maybe_named; { emit_complex_type_optional ct (mk $startpos $endpos) }
 
 complex_type_path:
 	| tp = type_path { emit_complex_type_path tp (mk $startpos $endpos) }

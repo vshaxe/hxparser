@@ -25,6 +25,7 @@
 sharp_condition_both:
 	| e = const { emit_const_expr e (mk $startpos $endpos) }
 	| MACRO { emit_const_expr (emit_const_ident "macro") (mk $startpos $endpos) }
+	| STATIC { emit_const_expr (emit_const_ident "static") (mk $startpos $endpos) }
 	| e1 = keyword_ident { e1 }
 	| POPEN; e = sharp_condition_any; PCLOSE { e }
 	| op = unary_prefix; e1 = sharp_condition { emit_unary_prefix_expr op e1 (mk $startpos $endpos) }

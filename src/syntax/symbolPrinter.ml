@@ -276,6 +276,7 @@ let s_xsymbol x =
 		| N_import_mode_alias -> "alias"
 		| N_case_expr -> "case_expr"
 		| N_complex_type_named -> "complex_type_named"
+		| N_complex_type_maybe_named -> "complex_type_maybe_named"
 		(* options *)
 		| N_option_package_ -> "?"
 		| N_option_type_hint_ -> "?"
@@ -292,7 +293,6 @@ let s_xsymbol x =
 		| N_loption_separated_nonempty_list_COMMA_expr__ -> "?"
 		| N_loption_separated_nonempty_list_COMMA_function_argument__ -> "?"
 		| N_option_path_ -> "?"
-		| N_loption_separated_nonempty_list_COMMA_complex_type_named__ -> "?"
 		(* lists *)
 		| N_path_with_pos -> "path"
 		| N_array_elements -> "elements"
@@ -304,7 +304,6 @@ let s_xsymbol x =
 		| N_lplist_pos_dot_ident__ -> "path"
 		| N_lplist_dot_ident_ -> "path"
 		| N_lplist_catch_ -> "catches"
-		| N_separated_nonempty_list_COMMA_complex_type_named_ -> "args"
 		| N_list_modifier_ -> "modifiers"
 		| N_list_common_flags_ -> "flags"
 		| N_list_case_ -> "cases"
@@ -326,4 +325,5 @@ let s_xsymbol x =
 		| N_separated_nonempty_list_COMMA_case_expr_ -> "patterns"
 		| N_loption_separated_nonempty_list_COMMA_enum_field_arg__ -> "args"
 		| N_list_enum_field_ -> "enum_fields"
+		| N_separated_nonempty_list_COMMA_complex_type_maybe_named_-> "args"
 		end
