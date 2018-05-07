@@ -269,6 +269,7 @@ let s_xsymbol x =
 		| N_type_path_parameter_bracket -> "bracket"
 		| N_type_path_parameter_complex_type -> "complex_type"
 		| N_type_path_parameter_literal -> "literal"
+		| N_type_path_parameter_bool -> "bool"
 		| N_unused -> ""
 		| N_import_mode_normal -> "normal"
 		| N_import_mode_all -> "all"

@@ -141,6 +141,7 @@ module type Sig = sig
 	val emit_type_path_parameter_complex_type : t_complex_type -> t_type_path_parameter_kind
 	val emit_type_path_parameter_bracket : t_expr list -> pos -> t_type_path_parameter_kind
 	val emit_type_path_parameter_literal : t_literal -> pos -> t_type_path_parameter_kind
+	val emit_type_path_parameter_bool : bool -> pos -> t_type_path_parameter_kind
 
 	(* Fields *)
 

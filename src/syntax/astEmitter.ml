@@ -303,6 +303,9 @@ let emit_type_path_parameter_bracket el p =
 let emit_type_path_parameter_literal lit p =
 	TPExpr (EConst lit,p)
 
+let emit_type_path_parameter_bool b p =
+	TPExpr (EConst(Ident (if b then "true" else "false")),p)
+
 (* Fields *)
 
 let emit_function_argument annotations opt name cto eo =

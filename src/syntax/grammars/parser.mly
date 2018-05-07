@@ -413,8 +413,13 @@ type_path_parameter_complex_type:
 type_path_parameter_literal:
 	| cst = literal { emit_type_path_parameter_literal cst (mk $startpos $endpos) }
 
+type_path_parameter_bool:
+	| TRUE { emit_type_path_parameter_bool true (mk $startpos $endpos) }
+	| FALSE { emit_type_path_parameter_bool false (mk $startpos $endpos) }
+
 %inline type_path_parameter:
-	| type_path_parameter_bracket | type_path_parameter_complex_type | type_path_parameter_literal { $1 }
+	| type_path_parameter_bracket | type_path_parameter_complex_type | type_path_parameter_literal
+	| type_path_parameter_bool { $1 }
 	/*| e = expr { TPExpr e }*/
 
 type_path_parameters:

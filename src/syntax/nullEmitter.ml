@@ -196,6 +196,8 @@ let emit_type_path_parameter_bracket el p = ()
 
 let emit_type_path_parameter_literal lit p = ()
 
+let emit_type_path_parameter_bool _ p = ()
+
 (* Fields *)
 
 let emit_function_argument annotations opt name cto eo = ()
