@@ -138,6 +138,7 @@ let rec s_token tk = match tk with
 	| TO -> "to"
 	| AS -> "as"
 	| IS -> "is"
+	| FINAL -> "final"
 	| EOF -> "<eof>"
 	| WHITESPACE s -> s
 	| NEWLINE s -> s

@@ -492,8 +492,13 @@ property_field:
 		emit_property_field annotations ml name get set ct eo (mk $startpos $endpos)
 	}
 
+final_field:
+	| annotations = annotations; ml = modifier*; FINAL; name = pos(dollar_ident); ct = type_hint?; eo = assignment?; SEMICOLON {
+		emit_variable_field annotations ml name ct eo (mk $startpos $endpos)
+	}
+
 %inline class_field:
-	| cff = function_field | cff = variable_field | cff = property_field { cff }
+	| cff = function_field | cff = variable_field | cff = property_field | cff = final_field { cff }
 
 enum_field_arg:
 	| opt = QUESTIONMARK?; name = dollar_ident; ct = type_hint; {

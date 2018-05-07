@@ -71,6 +71,7 @@
 	| TO { "to" }
 	| AS { "as" }
 	| IS { "is" }
+	| FINAL { "final" }
 
 %public string:
 	| s = STRING | s = STRING2 { s }

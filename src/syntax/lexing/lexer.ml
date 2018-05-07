@@ -144,6 +144,7 @@ and token lexbuf =
 	| "to" -> update lexbuf; TO
 	| "as" -> update lexbuf; AS
 	| "is" -> update lexbuf; IS
+	| "final" -> update lexbuf; FINAL
 	(* punctuation *)
 	| ":" -> update lexbuf; COLON
 	| ";" -> update lexbuf; SEMICOLON
