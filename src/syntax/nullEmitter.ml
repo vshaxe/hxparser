@@ -186,6 +186,10 @@ let emit_complex_type_optional ct p = ()
 
 let emit_complex_type_function ct1 ct2 p = ()
 
+let emit_complex_type_named n ct p = ()
+
+let emit_complex_type_named_function ctl ct p = ()
+
 let emit_type_path_parameter_complex_type ct = ()
 
 let emit_type_path_parameter_bracket el p = ()

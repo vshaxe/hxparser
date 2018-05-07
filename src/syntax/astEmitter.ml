@@ -290,6 +290,10 @@ let emit_complex_type_function ct1 ct2 p =
 	| _ ->
 		CTFunction ([ct1],ct2),p
 
+let emit_complex_type_named n ct p = CTNamed(n,ct),p
+
+let emit_complex_type_named_function ctl ct p = CTFunction(ctl,ct),p
+
 let emit_type_path_parameter_complex_type ct =
 	TPType ct
 

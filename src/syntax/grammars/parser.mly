@@ -374,7 +374,11 @@ anonymous_type_fields:
 	| l = class_field+ { emit_anonymous_class_fields l }
 	| l = anonymous_type_fields_short { emit_anonymous_type_fields l }
 
+complex_type_named:
+	| n = pos(dollar_ident); COLON; ct = complex_type { emit_complex_type_named n ct (mk $startpos $endpos) }
+
 complex_type_parent:
+	| POPEN; ctl = separated_list(COMMA, complex_type_named); PCLOSE; ARROW; ctr = complex_type { emit_complex_type_named_function ctl ctr (mk $startpos $endpos) }
 	| POPEN; ct = complex_type; PCLOSE { emit_complex_type_parent ct (mk $startpos $endpos) }
 
 complex_type_extension:
