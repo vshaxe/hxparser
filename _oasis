@@ -33,7 +33,7 @@ PostBuildCommand:
     cp _build/src/hxparser.native hxparser.exe
 
 if flag(js)
-    PostBuildCommand: cp _build/src/hxparser.native hxparser.exe & js_of_ocaml --wrap-with-fun _build/src/hxparserjs.byte -o hxparserjs.js
+    PostBuildCommand: cp _build/src/hxparser.native hxparser.exe & js_of_ocaml --wrap-with-fun=embed -o hxparserjs.js _build/src/hxparserjs.byte
 
 Executable "hxparser"
     Path: src
